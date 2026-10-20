@@ -129,10 +129,28 @@ make dev
 
 ### 2. Standalone Terminal TUI & CLI (Go)
 
-Launch the interactive TUI directly:
+Launch the interactive Spotlight-style TUI:
 ```bash
 make tui
+# or simply:
+foltty
 ```
+
+#### 🎨 Spotlight-like Centered TUI & Vim Mode:
+- **Instant Search:** Starts directly in search mode with live filtering.
+- **Vim Command Mode (`:`):** Type `:` to enter command mode:
+  - `:h` or `:help`: Open full interactive help manual.
+  - `:a <path> [name]`: Add any folder path with an optional custom display name.
+  - `:r <new-name>`: Rename the selected project's display label.
+  - `:d` or `:rm`: Delete selected project.
+  - `:term <id>`: Switch default terminal emulator (`ghostty`, `iterm`, `wezterm`, `warp`, etc.).
+  - `:q` or `:quit`: Exit Foltty.
+- **Shortcuts:**
+  - `↵ Enter`: Launch selected project in terminal.
+  - `Ctrl + A`: Interactive prompt to add a project and display name.
+  - `Ctrl + R`: Rename selected project.
+  - `Ctrl + D`: Remove selected project.
+  - `Esc`: Clear search / Exit.
 
 Install `foltty` globally into your system (`~/.local/bin`):
 ```bash
@@ -141,14 +159,15 @@ make install-tui
 
 **Common CLI Commands:**
 ```bash
-foltty              # Interactive TUI with fuzzy search and preview
-foltty add          # Register current directory in Foltty
-foltty add docs     # Register ~/Documents via preset
-foltty add ~        # Register Home directory
-foltty list         # Print registered projects
-foltty list --json  # Output in JSON format for automation
-foltty rm docs      # Remove project or preset from list
-foltty open docs    # Launch directly in your preferred terminal
+foltty                     # Interactive Spotlight-style TUI with Vim mode
+foltty add <path> [name]   # Register directory with optional display name
+foltty rename <target> <n> # Rename a project's display name
+foltty add docs            # Register ~/Documents via preset
+foltty add ~               # Register Home directory
+foltty list                # Print registered projects
+foltty list --json         # Output in JSON format for automation
+foltty rm docs             # Remove project or preset from list
+foltty open docs           # Launch directly in your preferred terminal
 ```
 
 ---

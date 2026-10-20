@@ -6,10 +6,12 @@ import { openInTerminal, type TerminalId } from "./terminal";
 export const FOLTTY_FILE = path.join(homedir(), ".foltty_projects");
 export const PMAN_FILE = path.join(homedir(), ".pman_projects");
 export const PRESETS_FILE = path.join(homedir(), ".foltty_presets.json");
+export const NAMES_FILE = path.join(homedir(), ".foltty_names.json");
 
 export interface FolttyProject {
   id: string;
   name: string;
+  customName?: string;
   path: string;
   exists: boolean;
 }
@@ -35,6 +37,46 @@ export function getStorageFilePath(): string {
     }
   }
   return FOLTTY_FILE;
+}
+
+export function getCustomNames(): Record<string, string> {
+  if (!fs.existsSync(NAMES_FILE)) {
+    return {};
+  }
+  try {
+    const data = fs.readFileSync(NAMES_FILE, "utf-8");
+    return JSON.parse(data);
+  } catch {
+    return {};
+  }
+}
+
+export function setProjectName(
+  targetPath: string,
+  customName: string,
+): { success: boolean; message: string } {
+  const normalized = normalizePath(targetPath);
+  const names = getCustomNames();
+  const trimmed = customName.trim();
+
+  if (trimmed === "") {
+    delete names[normalized];
+  } else {
+    names[normalized] = trimmed;
+  }
+
+  try {
+    fs.writeFileSync(NAMES_FILE, JSON.stringify(names, null, 2), "utf-8");
+    return {
+      success: true,
+      message: `Project renamed to '${trimmed || path.basename(normalized)}'`,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: `Error renaming project: ${String(err)}`,
+    };
+  }
 }
 
 export function getDefaultPresets(): FolttyPreset[] {
@@ -198,6 +240,8 @@ export function getProjects(): FolttyProject[] {
 
   try {
     const content = fs.readFileSync(filePath, "utf-8");
+    const customNames = getCustomNames();
+
     const lines = content
       .split("\n")
       .map((line) => line.trim())
@@ -208,9 +252,18 @@ export function getProjects(): FolttyProject[] {
     return uniquePaths.map((projPath) => {
       const expandedPath = normalizePath(projPath);
       const exists = fs.existsSync(expandedPath);
+      let name = path.basename(expandedPath) || expandedPath;
+      let customLabel: string | undefined = undefined;
+
+      if (customNames[expandedPath]) {
+        name = customNames[expandedPath];
+        customLabel = customNames[expandedPath];
+      }
+
       return {
         id: expandedPath,
-        name: path.basename(expandedPath) || expandedPath,
+        name,
+        customName: customLabel,
         path: expandedPath,
         exists,
       };
@@ -221,11 +274,10 @@ export function getProjects(): FolttyProject[] {
   }
 }
 
-export function addProject(targetPath: string): {
-  success: boolean;
-  message: string;
-  project?: FolttyProject;
-} {
+export function addProject(
+  targetPath: string,
+  customName?: string,
+): { success: boolean; message: string; project?: FolttyProject } {
   const resolved = resolvePresetOrPath(targetPath);
 
   if (!fs.existsSync(resolved)) {
@@ -238,22 +290,21 @@ export function addProject(targetPath: string): {
   }
 
   const projects = getProjects();
-  if (projects.some((p) => p.path === resolved)) {
-    return {
-      success: false,
-      message: `Project already registered: ${resolved}`,
-    };
+  if (!projects.some((p) => p.path === resolved)) {
+    const filePath = getStorageFilePath();
+    fs.appendFileSync(filePath, `${resolved}\n`, "utf-8");
+
+    if (fs.existsSync(PMAN_FILE) && filePath !== PMAN_FILE) {
+      try {
+        fs.appendFileSync(PMAN_FILE, `${resolved}\n`, "utf-8");
+      } catch {
+        // Ignore secondary error
+      }
+    }
   }
 
-  const filePath = getStorageFilePath();
-  fs.appendFileSync(filePath, `${resolved}\n`, "utf-8");
-
-  if (fs.existsSync(PMAN_FILE) && filePath !== PMAN_FILE) {
-    try {
-      fs.appendFileSync(PMAN_FILE, `${resolved}\n`, "utf-8");
-    } catch {
-      // Ignore secondary error
-    }
+  if (customName && customName.trim() !== "") {
+    setProjectName(resolved, customName);
   }
 
   return {
@@ -261,7 +312,8 @@ export function addProject(targetPath: string): {
     message: `Project added: ${resolved}`,
     project: {
       id: resolved,
-      name: path.basename(resolved) || resolved,
+      name: customName || path.basename(resolved) || resolved,
+      customName,
       path: resolved,
       exists: true,
     },
@@ -284,6 +336,8 @@ export function removeProject(targetPath: string): {
       message: `Project not found in list: ${targetPath}`,
     };
   }
+
+  setProjectName(resolved, ""); // clean up custom name
 
   const filePath = getStorageFilePath();
   const content =

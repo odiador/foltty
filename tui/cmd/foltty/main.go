@@ -17,8 +17,9 @@ func printHelp() {
 👻 Foltty (Go Core) - Multi-Terminal Project Manager
 
 USAGE:
-  foltty                     Launch interactive TUI
-  foltty add [path|preset]   Add folder or preset to list (e.g. foltty add docs)
+  foltty                     Launch interactive Spotlight-like TUI
+  foltty add <path> [name]   Add folder or preset with optional display name
+  foltty rename <target> <n> Rename a project's display name
   foltty rm <path|preset>    Remove project or preset from list
   foltty list [--json]       List all registered projects
   foltty open <query> [term] Open project in preferred or specified terminal
@@ -146,16 +147,9 @@ func main() {
 	args := os.Args[1:]
 
 	if len(args) == 0 || args[0] == "tui" {
-		if ui.HasFzf() {
-			if err := ui.RunFzfTui(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error in TUI: %v\n", err)
-				os.Exit(1)
-			}
-		} else {
-			if err := ui.RunNativeTui(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+		if err := ui.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error in TUI: %v\n", err)
+			os.Exit(1)
 		}
 		return
 	}
@@ -169,8 +163,12 @@ func main() {
 
 	case "add":
 		target := "."
+		customName := ""
 		if len(args) > 1 {
 			target = args[1]
+		}
+		if len(args) > 2 {
+			customName = strings.Join(args[2:], " ")
 		}
 		if target == "." {
 			cwd, err := os.Getwd()
@@ -178,12 +176,29 @@ func main() {
 				target = cwd
 			}
 		}
-		if err := project.AddProject(target); err != nil {
+		if err := project.AddProjectWithName(target, customName); err != nil {
 			fmt.Fprintf(os.Stderr, "❌ %v\n", err)
 			os.Exit(1)
 		}
 		resolved, _ := project.ResolvePresetOrPath(target)
-		fmt.Printf("✅ Project added: %s\n", resolved)
+		nameMsg := ""
+		if customName != "" {
+			nameMsg = fmt.Sprintf(" ('%s')", customName)
+		}
+		fmt.Printf("✅ Project added%s: %s\n", nameMsg, resolved)
+
+	case "rename", "label":
+		if len(args) < 3 {
+			fmt.Fprintln(os.Stderr, "❌ Usage: foltty rename <path|name> <new display name>")
+			os.Exit(1)
+		}
+		target := args[1]
+		newName := strings.Join(args[2:], " ")
+		if err := project.SetProjectName(target, newName); err != nil {
+			fmt.Fprintf(os.Stderr, "❌ %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("🏷️ Renamed '%s' to '%s'\n", target, newName)
 
 	case "rm", "remove", "delete":
 		if len(args) < 2 {
@@ -220,7 +235,11 @@ func main() {
 			if !p.Exists {
 				mark = "⚠️ "
 			}
-			fmt.Printf("  %s \x1b[1m%-18s\x1b[0m -> \x1b[90m%s\x1b[0m\n", mark, p.Name, p.Path)
+			name := p.Name
+			if p.CustomName != "" {
+				name = fmt.Sprintf("%s (🏷️ %s)", p.Name, p.CustomName)
+			}
+			fmt.Printf("  %s \x1b[1m%-24s\x1b[0m -> \x1b[90m%s\x1b[0m\n", mark, name, p.Path)
 		}
 
 	case "open":
@@ -243,14 +262,13 @@ func main() {
 
 		var targetPath string
 		for _, p := range projects {
-			if strings.ToLower(p.Name) == query || strings.Contains(strings.ToLower(p.Path), query) {
+			if strings.ToLower(p.Name) == query || strings.ToLower(p.CustomName) == query || strings.Contains(strings.ToLower(p.Path), query) {
 				targetPath = p.Path
 				break
 			}
 		}
 
 		if targetPath == "" {
-			// Check if preset directly
 			if resolved, err := project.ResolvePresetOrPath(args[1]); err == nil {
 				targetPath = resolved
 			}

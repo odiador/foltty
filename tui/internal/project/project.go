@@ -12,9 +12,10 @@ import (
 )
 
 type Project struct {
-	Name   string `json:"name"`
-	Path   string `json:"path"`
-	Exists bool   `json:"exists"`
+	Name       string `json:"name"`
+	CustomName string `json:"customName,omitempty"`
+	Path       string `json:"path"`
+	Exists     bool   `json:"exists"`
 }
 
 type Preset struct {
@@ -47,6 +48,72 @@ func GetStoragePath() (string, error) {
 	}
 
 	return folttyFile, nil
+}
+
+func GetNamesFilePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".foltty_names.json"), nil
+}
+
+func GetCustomNames() (map[string]string, error) {
+	filePath, err := GetNamesFilePath()
+	if err != nil {
+		return make(map[string]string), err
+	}
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return make(map[string]string), nil
+	}
+
+	var names map[string]string
+	if err := json.Unmarshal(data, &names); err != nil {
+		return make(map[string]string), nil
+	}
+	return names, nil
+}
+
+func SetProjectName(target, customName string) error {
+	projects, _ := GetProjects()
+	var matchedPath string
+	for _, p := range projects {
+		if strings.EqualFold(p.Name, target) || strings.EqualFold(p.CustomName, target) || p.Path == target {
+			matchedPath = p.Path
+			break
+		}
+	}
+	if matchedPath == "" {
+		norm, err := NormalizePath(target)
+		if err == nil {
+			matchedPath = norm
+		} else {
+			matchedPath = target
+		}
+	}
+
+	names, _ := GetCustomNames()
+	trimmed := strings.TrimSpace(customName)
+
+	if trimmed == "" {
+		delete(names, matchedPath)
+	} else {
+		names[matchedPath] = trimmed
+	}
+
+	filePath, err := GetNamesFilePath()
+	if err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(names, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filePath, data, 0644)
 }
 
 func GetPresetsFilePath() (string, error) {
@@ -233,6 +300,8 @@ func GetProjects() ([]Project, error) {
 		return nil, err
 	}
 
+	customNames, _ := GetCustomNames()
+
 	lines := strings.Split(string(data), "\n")
 	seen := make(map[string]bool)
 	var projects []Project
@@ -261,10 +330,17 @@ func GetProjects() ([]Project, error) {
 			name = expanded
 		}
 
+		customLabel := ""
+		if cName, ok := customNames[expanded]; ok && cName != "" {
+			name = cName
+			customLabel = cName
+		}
+
 		projects = append(projects, Project{
-			Name:   name,
-			Path:   expanded,
-			Exists: exists,
+			Name:       name,
+			CustomName: customLabel,
+			Path:       expanded,
+			Exists:     exists,
 		})
 	}
 
@@ -272,6 +348,10 @@ func GetProjects() ([]Project, error) {
 }
 
 func AddProject(targetPath string) error {
+	return AddProjectWithName(targetPath, "")
+}
+
+func AddProjectWithName(targetPath, customName string) error {
 	resolved, err := ResolvePresetOrPath(targetPath)
 	if err != nil {
 		return err
@@ -290,25 +370,33 @@ func AddProject(targetPath string) error {
 		return err
 	}
 
+	alreadyRegistered := false
 	for _, p := range projects {
 		if p.Path == resolved {
-			return fmt.Errorf("project already registered: %s", resolved)
+			alreadyRegistered = true
+			break
 		}
 	}
 
-	storagePath, err := GetStoragePath()
-	if err != nil {
-		return err
+	if !alreadyRegistered {
+		storagePath, err := GetStoragePath()
+		if err != nil {
+			return err
+		}
+
+		f, err := os.OpenFile(storagePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		if _, err := f.WriteString(resolved + "\n"); err != nil {
+			return err
+		}
 	}
 
-	f, err := os.OpenFile(storagePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if _, err := f.WriteString(resolved + "\n"); err != nil {
-		return err
+	if strings.TrimSpace(customName) != "" {
+		_ = SetProjectName(resolved, customName)
 	}
 
 	return nil
@@ -329,8 +417,9 @@ func RemoveProject(targetPath string) error {
 	found := false
 
 	for _, p := range projects {
-		if p.Path == resolved || p.Name == targetPath || strings.EqualFold(p.Name, targetPath) {
+		if p.Path == resolved || p.Name == targetPath || p.CustomName == targetPath || strings.EqualFold(p.Name, targetPath) {
 			found = true
+			_ = SetProjectName(p.Path, "") // remove custom name
 			continue
 		}
 		updated = append(updated, p.Path)

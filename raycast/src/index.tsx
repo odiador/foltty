@@ -22,6 +22,7 @@ import {
   getStorageFilePath,
   getAllPresets,
   addCustomPreset,
+  setProjectName,
   type FolttyProject,
   type FolttyPreset,
 } from "./core/projects";
@@ -141,129 +142,149 @@ export default function Command() {
           }
         />
       ) : (
-        projects.map((project) => (
-          <List.Item
-            key={project.id}
-            icon={
-              project.exists
-                ? Icon.Folder
-                : { source: Icon.ExclamationMark, tintColor: Color.Red }
-            }
-            title={project.name}
-            subtitle={project.path.replace(homedir(), "~")}
-            accessories={[
-              !project.exists
-                ? {
-                    tag: { value: "Missing Path", color: Color.Red },
-                    tooltip: "Folder does not exist on disk",
-                  }
-                : {},
-            ]}
-            actions={
-              <ActionPanel>
-                <ActionPanel.Section title="Terminal">
-                  <Action
-                    title={`Open in ${activeTerminalName}`}
-                    icon={Icon.Terminal}
-                    onAction={() => handleOpenTerminal(project.path)}
-                  />
-                  <ActionPanel.Submenu
-                    title="Open in Specific Terminal…"
-                    icon={Icon.Terminal}
-                    shortcut={{ modifiers: ["cmd"], key: "t" }}
-                  >
-                    {(
-                      Object.keys(
-                        TERMINAL_REGISTRY,
-                      ) as (keyof typeof TERMINAL_REGISTRY)[]
-                    ).map((termKey) => {
-                      const term = TERMINAL_REGISTRY[termKey];
-                      const available = term.isAvailable();
-                      return (
-                        <Action
-                          key={term.id}
-                          title={`${term.name}${available ? "" : " (Not Installed)"}`}
-                          icon={available ? Icon.Terminal : Icon.XMarkCircle}
-                          onAction={() =>
-                            handleOpenTerminal(project.path, term.id)
-                          }
+        projects.map((project) => {
+          const accessories: List.Item.Accessory[] = [];
+          if (!project.exists) {
+            accessories.push({
+              tag: { value: "Missing Path", color: Color.Red },
+              tooltip: "Folder does not exist on disk",
+            });
+          }
+          if (project.customName) {
+            accessories.push({
+              tag: { value: "Custom Name", color: Color.Purple },
+            });
+          }
+
+          return (
+            <List.Item
+              key={project.id}
+              icon={
+                project.exists
+                  ? Icon.Folder
+                  : { source: Icon.ExclamationMark, tintColor: Color.Red }
+              }
+              title={project.name}
+              subtitle={project.path.replace(homedir(), "~")}
+              accessories={accessories}
+              actions={
+                <ActionPanel>
+                  <ActionPanel.Section title="Terminal">
+                    <Action
+                      title={`Open in ${activeTerminalName}`}
+                      icon={Icon.Terminal}
+                      onAction={() => handleOpenTerminal(project.path)}
+                    />
+                    <ActionPanel.Submenu
+                      title="Open in Specific Terminal…"
+                      icon={Icon.Terminal}
+                      shortcut={{ modifiers: ["cmd"], key: "t" }}
+                    >
+                      {(
+                        Object.keys(
+                          TERMINAL_REGISTRY,
+                        ) as (keyof typeof TERMINAL_REGISTRY)[]
+                      ).map((termKey) => {
+                        const term = TERMINAL_REGISTRY[termKey];
+                        const available = term.isAvailable();
+                        return (
+                          <Action
+                            key={term.id}
+                            title={`${term.name}${available ? "" : " (Not Installed)"}`}
+                            icon={available ? Icon.Terminal : Icon.XMarkCircle}
+                            onAction={() =>
+                              handleOpenTerminal(project.path, term.id)
+                            }
+                          />
+                        );
+                      })}
+                    </ActionPanel.Submenu>
+                  </ActionPanel.Section>
+
+                  <ActionPanel.Section title="File Actions">
+                    <Action.ShowInFinder path={project.path} />
+                    <Action.OpenWith
+                      path={project.path}
+                      shortcut={Keyboard.Shortcut.Common.OpenWith}
+                    />
+                    <Action.CopyToClipboard
+                      title="Copy Path"
+                      content={project.path}
+                      shortcut={{ modifiers: ["cmd"], key: "c" }}
+                    />
+                  </ActionPanel.Section>
+
+                  <ActionPanel.Section title="Project Details">
+                    <Action.Push
+                      title="Rename Display Name…"
+                      icon={Icon.Pencil}
+                      shortcut={Keyboard.Shortcut.Common.Refresh}
+                      target={
+                        <RenameProjectForm
+                          project={project}
+                          onRenamed={loadData}
                         />
-                      );
-                    })}
-                  </ActionPanel.Submenu>
-                </ActionPanel.Section>
+                      }
+                    />
+                    <Action.Push
+                      title="Save as Custom Preset…"
+                      icon={Icon.Bookmark}
+                      target={
+                        <SavePresetForm
+                          defaultPath={project.path}
+                          onPresetSaved={loadData}
+                        />
+                      }
+                    />
+                  </ActionPanel.Section>
 
-                <ActionPanel.Section title="File Actions">
-                  <Action.ShowInFinder path={project.path} />
-                  <Action.OpenWith
-                    path={project.path}
-                    shortcut={Keyboard.Shortcut.Common.OpenWith}
-                  />
-                  <Action.CopyToClipboard
-                    title="Copy Path"
-                    content={project.path}
-                    shortcut={{ modifiers: ["cmd"], key: "c" }}
-                  />
-                </ActionPanel.Section>
+                  <ActionPanel.Section title="Presets">
+                    <ActionPanel.Submenu
+                      title="Add from Preset…"
+                      icon={Icon.Star}
+                      shortcut={{ modifiers: ["cmd", "shift"], key: "a" }}
+                    >
+                      {presets.map((p) => (
+                        <Action
+                          key={p.id}
+                          title={`Add ${p.name}`}
+                          icon={p.isCustom ? Icon.Bookmark : Icon.Folder}
+                          onAction={() => handleAddPreset(p)}
+                        />
+                      ))}
+                    </ActionPanel.Submenu>
+                  </ActionPanel.Section>
 
-                <ActionPanel.Section title="Presets">
-                  <ActionPanel.Submenu
-                    title="Add from Preset…"
-                    icon={Icon.Star}
-                    shortcut={{ modifiers: ["cmd", "shift"], key: "a" }}
-                  >
-                    {presets.map((p) => (
-                      <Action
-                        key={p.id}
-                        title={`Add ${p.name}`}
-                        icon={p.isCustom ? Icon.Bookmark : Icon.Folder}
-                        onAction={() => handleAddPreset(p)}
-                      />
-                    ))}
-                  </ActionPanel.Submenu>
-
-                  <Action.Push
-                    title="Save as Custom Preset…"
-                    icon={Icon.Bookmark}
-                    target={
-                      <SavePresetForm
-                        defaultPath={project.path}
-                        onPresetSaved={loadData}
-                      />
-                    }
-                  />
-                </ActionPanel.Section>
-
-                <ActionPanel.Section title="Project Management">
-                  <Action.Push
-                    title="Add Project"
-                    icon={Icon.Plus}
-                    shortcut={Keyboard.Shortcut.Common.New}
-                    target={
-                      <AddProjectForm
-                        onProjectAdded={loadData}
-                        presets={presets}
-                      />
-                    }
-                  />
-                  <Action
-                    title="Remove from List"
-                    icon={Icon.Trash}
-                    style={Action.Style.Destructive}
-                    shortcut={{ modifiers: ["cmd"], key: "backspace" }}
-                    onAction={() => handleDelete(project)}
-                  />
-                  <Action
-                    title="Reload List"
-                    icon={Icon.ArrowClockwise}
-                    shortcut={Keyboard.Shortcut.Common.Refresh}
-                    onAction={loadData}
-                  />
-                </ActionPanel.Section>
-              </ActionPanel>
-            }
-          />
-        ))
+                  <ActionPanel.Section title="Project Management">
+                    <Action.Push
+                      title="Add Project"
+                      icon={Icon.Plus}
+                      shortcut={Keyboard.Shortcut.Common.New}
+                      target={
+                        <AddProjectForm
+                          onProjectAdded={loadData}
+                          presets={presets}
+                        />
+                      }
+                    />
+                    <Action
+                      title="Remove from List"
+                      icon={Icon.Trash}
+                      style={Action.Style.Destructive}
+                      shortcut={{ modifiers: ["cmd"], key: "backspace" }}
+                      onAction={() => handleDelete(project)}
+                    />
+                    <Action
+                      title="Reload List"
+                      icon={Icon.ArrowClockwise}
+                      onAction={loadData}
+                    />
+                  </ActionPanel.Section>
+                </ActionPanel>
+              }
+            />
+          );
+        })
       )}
     </List>
   );
@@ -279,6 +300,7 @@ function AddProjectForm({
   const { pop } = useNavigation();
   const [folderPath, setFolderPath] = useState<string[]>([]);
   const [customPath, setCustomPath] = useState<string>("");
+  const [customName, setCustomName] = useState<string>("");
   const [selectedPreset, setSelectedPreset] = useState<string>("");
 
   const handleSubmit = async () => {
@@ -305,7 +327,7 @@ function AddProjectForm({
       return;
     }
 
-    const res = addProject(target);
+    const res = addProject(target, customName.trim());
     if (!res.success) {
       await showToast({
         style: Toast.Style.Failure,
@@ -318,7 +340,7 @@ function AddProjectForm({
     await showToast({
       style: Toast.Style.Success,
       title: "Project Added",
-      message: path.basename(target),
+      message: customName || path.basename(target),
     });
 
     onProjectAdded();
@@ -369,6 +391,69 @@ function AddProjectForm({
         placeholder="docs, ~, ~/Documents or /full/path"
         value={customPath}
         onChange={setCustomPath}
+      />
+
+      <Form.TextField
+        id="customName"
+        title="Display Name (Optional)"
+        placeholder="e.g. Backend API, Personal Blog"
+        value={customName}
+        onChange={setCustomName}
+      />
+    </Form>
+  );
+}
+
+function RenameProjectForm({
+  project,
+  onRenamed,
+}: {
+  project: FolttyProject;
+  onRenamed: () => void;
+}) {
+  const { pop } = useNavigation();
+  const [displayName, setDisplayName] = useState(
+    project.customName || project.name,
+  );
+
+  const handleSubmit = async () => {
+    const res = setProjectName(project.path, displayName.trim());
+    if (res.success) {
+      await showToast({
+        style: Toast.Style.Success,
+        title: "Project Renamed",
+        message: displayName || path.basename(project.path),
+      });
+      onRenamed();
+      pop();
+    } else {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Error Renaming",
+        message: res.message,
+      });
+    }
+  };
+
+  return (
+    <Form
+      actions={
+        <ActionPanel>
+          <Action.SubmitForm
+            title="Save Display Name"
+            onSubmit={handleSubmit}
+          />
+        </ActionPanel>
+      }
+    >
+      <Form.Description
+        text={`Assign a custom friendly display name for ${project.path}`}
+      />
+      <Form.TextField
+        id="displayName"
+        title="Display Name"
+        value={displayName}
+        onChange={setDisplayName}
       />
     </Form>
   );
