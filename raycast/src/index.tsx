@@ -330,7 +330,11 @@ function AddProjectForm({ onProjectAdded }: { onProjectAdded: () => void }) {
     <Form
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Save Project" onSubmit={handleSubmit} />
+          <Action.SubmitForm
+            title="Save Project"
+            onSubmit={handleSubmit}
+            shortcut={{ modifiers: [], key: "return" }}
+          />
         </ActionPanel>
       }
     >
@@ -402,7 +406,11 @@ function RenameProjectForm({
     <Form
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Save Name" onSubmit={handleSubmit} />
+          <Action.SubmitForm
+            title="Save Name"
+            onSubmit={handleSubmit}
+            shortcut={{ modifiers: [], key: "return" }}
+          />
         </ActionPanel>
       }
     >
