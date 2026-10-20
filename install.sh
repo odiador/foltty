@@ -3,11 +3,11 @@ set -e
 
 # ==============================================================================
 # 👻 Foltty Installer (folder + tty = foltty)
-# Instala la CLI/TUI en Go y configura la extensión de Raycast.
+# Installs the Go CLI/TUI and sets up the Raycast extension.
 #
-# Uso:
+# Usage:
 #   curl -fsSL https://raw.githubusercontent.com/odiador/foltty/main/install.sh | bash
-# O localmente:
+# Or locally:
 #   ./install.sh
 # ==============================================================================
 
@@ -23,27 +23,27 @@ echo -e "${CYAN}${BOLD}👻 Foltty Installer${RESET} (${YELLOW}folder + tty = fo
 echo -e "${BOLD}====================================================${RESET}"
 echo ""
 
-# 1. Verificar macOS
+# 1. Verify macOS
 OS="$(uname -s)"
 if [ "$OS" != "Darwin" ]; then
-    echo -e "${RED}❌ Foltty está diseñado exclusivamente para macOS (Ghostty + Raycast).${RESET}"
+    echo -e "${RED}❌ Foltty is designed exclusively for macOS (Ghostty, iTerm2, WezTerm, Terminal + Raycast).${RESET}"
     exit 1
 fi
 
 ARCH="$(uname -m)"
-echo -e "🍏 Sistema detectado: ${GREEN}macOS ($ARCH)${RESET}"
+echo -e "🍏 System detected: ${GREEN}macOS ($ARCH)${RESET}"
 
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
 REPO_DIR="$HOME/.foltty"
 
-# 2. Si estamos dentro del repositorio clonado, usamos la carpeta actual; si no, clonamos
+# 2. Check if inside local cloned repository or need to clone
 if [ -f "./tui/go.mod" ] && [ -d "./raycast" ]; then
     SOURCE_DIR="$(pwd)"
-    echo -e "📁 Usando código fuente local: ${CYAN}$SOURCE_DIR${RESET}"
+    echo -e "📁 Using local source repository: ${CYAN}$SOURCE_DIR${RESET}"
 else
-    echo -e "📦 Obteniendo la última versión de ${CYAN}https://github.com/odiador/foltty.git${RESET}..."
+    echo -e "📦 Fetching latest version from ${CYAN}https://github.com/odiador/foltty.git${RESET}..."
     if [ -d "$REPO_DIR/.git" ]; then
         cd "$REPO_DIR" && git pull --quiet
     else
@@ -53,19 +53,19 @@ else
     SOURCE_DIR="$REPO_DIR"
 fi
 
-# 3. Compilar e Instalar el binario CLI en Go
+# 3. Build & Install Go CLI binary
 echo ""
-echo -e "${BOLD}🔨 Compilando binario de Go (foltty)...${RESET}"
+echo -e "${BOLD}🔨 Building Go binary (foltty)...${RESET}"
 if command -v go >/dev/null 2>&1; then
     cd "$SOURCE_DIR/tui"
     go build -ldflags="-s -w" -o "$INSTALL_DIR/foltty" ./cmd/foltty
     chmod +x "$INSTALL_DIR/foltty"
-    echo -e "✅ Binario instalado con éxito en: ${GREEN}$INSTALL_DIR/foltty${RESET}"
+    echo -e "✅ Binary successfully installed to: ${GREEN}$INSTALL_DIR/foltty${RESET}"
 else
-    echo -e "${YELLOW}⚠️  Go no está instalado. Si tienes Homebrew, puedes instalarlo con: brew install go${RESET}"
+    echo -e "${YELLOW}⚠️  Go is not installed. If you have Homebrew, install it with: brew install go${RESET}"
 fi
 
-# 4. Asegurar que ~/.local/bin esté en el PATH
+# 4. Ensure ~/.local/bin is in PATH
 SHELL_CONFIG=""
 if [ -n "$ZSH_VERSION" ] || [ -f "$HOME/.zshrc" ]; then
     SHELL_CONFIG="$HOME/.zshrc"
@@ -78,39 +78,45 @@ fi
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
     if [ -n "$SHELL_CONFIG" ]; then
         echo ""
-        echo -e "⚙️  Agregando ${CYAN}$INSTALL_DIR${RESET} a tu ${CYAN}$SHELL_CONFIG${RESET}..."
+        echo -e "⚙️  Adding ${CYAN}$INSTALL_DIR${RESET} to your ${CYAN}$SHELL_CONFIG${RESET}..."
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_CONFIG"
         export PATH="$HOME/.local/bin:$PATH"
     fi
 fi
 
-# 5. Compilar la Extensión de Raycast si Node/pnpm están disponibles
+# 5. Build Raycast extension
 echo ""
-echo -e "${BOLD}🟣 Configurando extensión de Raycast...${RESET}"
+echo -e "${BOLD}🟣 Configuring Raycast extension...${RESET}"
 if [ -d "/Applications/Raycast.app" ]; then
-    if command -v pnpm >/dev/null 2>&1; then
-        echo -e "📦 Instalando dependencias y compilando extensión..."
+    if command -v pnpm >/dev/null 2>&1 || command -v npm >/dev/null 2>&1; then
+        echo -e "📦 Building extension bundle..."
         cd "$SOURCE_DIR/raycast"
-        pnpm install --silent
-        pnpm run build >/dev/null
-        echo -e "✅ Extensión compilada en: ${GREEN}$SOURCE_DIR/raycast/dist${RESET}"
+        if command -v pnpm >/dev/null 2>&1; then
+            pnpm install --silent
+            pnpm run build >/dev/null
+        else
+            npm ci --silent
+            npm run build >/dev/null
+        fi
+        echo -e "✅ Extension built at: ${GREEN}$SOURCE_DIR/raycast/dist${RESET}"
         echo ""
-        echo -e "${CYAN}💡 Para vincularla en Raycast:${RESET}"
-        echo -e "   1. Abre Raycast y busca ${BOLD}'Manage Extensions'${RESET}"
-        echo -e "   2. Presiona ${BOLD}⌘ + K${RESET} ➔ ${BOLD}'Add Development Extension'${RESET}"
-        echo -e "   3. Selecciona la carpeta: ${CYAN}$SOURCE_DIR/raycast${RESET}"
+        echo -e "${CYAN}💡 To link the extension in Raycast:${RESET}"
+        echo -e "   1. Open Raycast and search for ${BOLD}'Manage Extensions'${RESET}"
+        echo -e "   2. Press ${BOLD}⌘ + K${RESET} ➔ ${BOLD}'Add Development Extension'${RESET}"
+        echo -e "   3. Select folder: ${CYAN}$SOURCE_DIR/raycast${RESET}"
     else
-        echo -e "${YELLOW}⚠️  pnpm no está instalado. Para compilar la extensión ejecuta: brew install pnpm && make dev${RESET}"
+        echo -e "${YELLOW}⚠️  Node package manager not found. Install Node & pnpm to use the Raycast extension.${RESET}"
     fi
 else
-    echo -e "${YELLOW}⚠️  Raycast.app no encontrada en /Applications.${RESET}"
+    echo -e "${YELLOW}⚠️  Raycast.app not found in /Applications.${RESET}"
 fi
 
 echo ""
-echo -e "${GREEN}${BOLD}🎉 ¡Instalación de Foltty completada con éxito!${RESET}"
+echo -e "${GREEN}${BOLD}🎉 Foltty installation completed!${RESET}"
 echo -e "----------------------------------------------------"
-echo -e "🚀 Prueba ejecutando en tu terminal:"
-echo -e "   ${CYAN}foltty preset${RESET}   ➔ Ver presets disponibles"
-echo -e "   ${CYAN}foltty add docs${RESET} ➔ Agregar tu carpeta Documentos"
-echo -e "   ${CYAN}foltty${RESET}          ➔ Abrir la TUI interactiva para Ghostty"
+echo -e "🚀 Try running in your terminal:"
+echo -e "   ${CYAN}foltty terminal${RESET}  ➔ Inspect & select terminal emulators"
+echo -e "   ${CYAN}foltty preset${RESET}    ➔ View available presets"
+echo -e "   ${CYAN}foltty add docs${RESET}  ➔ Add Documents folder"
+echo -e "   ${CYAN}foltty${RESET}           ➔ Open interactive TUI"
 echo ""

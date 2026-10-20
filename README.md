@@ -1,157 +1,204 @@
 # 👻 Foltty
 
 > **`folder` + `tty` = `foltty`** ⚡  
-> El selector ultra-rápido de proyectos para **Ghostty**, diseñado como un monorepo con **Extensión Nativa de Raycast** y **TUI / CLI en Go**.
+> The lightning-fast project and folder launcher for macOS terminal emulators, architected as a monorepo with a **Native Raycast Extension** and a **Standalone Go TUI / CLI**.
 
 [![CI](https://github.com/odiador/foltty/actions/workflows/ci.yml/badge.svg)](https://github.com/odiador/foltty/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
 ---
 
-## ⚡ Instalación en 1 Línea (One-Liner Install)
+## ⚡ 1-Line Quick Install
 
-Puedes instalar la CLI en Go y preparar la extensión de Raycast con un solo comando:
+Install the standalone Go CLI/TUI and build the Raycast extension with a single command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/odiador/foltty/main/install.sh | bash
 ```
 
-Este script:
-1. Detecta la arquitectura de tu Mac (Apple Silicon `arm64` o Intel `x86_64`).
-2. Compila e instala el binario `foltty` en `~/.local/bin/foltty`.
-3. Configura tu `$PATH` automáticamente (`.zshrc` / `.bashrc`).
-4. Compila la extensión de Raycast lista para usar.
+**What the installer does:**
+1. Detects your macOS architecture (Apple Silicon `arm64` or Intel `x86_64`).
+2. Builds and installs the optimized `foltty` binary into `~/.local/bin/foltty`.
+3. Ensures `~/.local/bin` is in your shell `$PATH` (`.zshrc` / `.bashrc`).
+4. Bundles the Raycast extension ready to link into Raycast.
 
 ---
 
-## 💡 El Concepto: ¿Por qué Foltty?
+## 💡 The Concept: What is Foltty?
 
-El nombre nace de la combinación de:
-- **`folder`** (tus carpetas y proyectos de desarrollo)
-- **`tty`** (tu terminal, optimizada especialmente para **Ghostty**)
+The name comes directly from:
+- **`folder`** (your local codebases, workspaces, and project directories)
+- **`tty`** (your terminal emulator, with native support for **Ghostty**, **iTerm2**, **WezTerm**, **Warp**, and more)
 
-La misión de **Foltty** es eliminar toda la fricción entre encontrar un proyecto y empezar a trabajar en él:
-1. **Fuera de la terminal (Navegador, Slack, Figma):** Invocas Raycast (`foltty`), filtras tu proyecto y con un `Enter` se abre una ventana limpia de Ghostty posicionada en la raíz del proyecto.
-2. **Dentro de la terminal (Ghostty, tmux, zsh):** No necesitas cambiar de aplicación ni usar el ratón; ejecutas `foltty` (o `Ctrl+P`) y navegas por la TUI interactiva con previsualización en tiempo real.
-3. **Estado 100% Sincronizado:** Ambos mundos leen y escriben en el mismo archivo (`~/.foltty_projects`), por lo que cualquier proyecto o preset agregado se refleja al instante en ambos entornos.
-
----
-
-## 🏗️ Estructura del Monorepo
-
-```tree
-foltty/
-├── raycast/                 # 🟣 App 1: Extensión Oficial de Raycast (React + TypeScript)
-│   ├── assets/
-│   │   └── icon.png         # Icono oficial (512x512)
-│   ├── src/
-│   │   ├── core/
-│   │   │   └── projects.ts  # Motor de persistencia y llamada a Ghostty
-│   │   └── index.tsx        # Interfaz de Raycast con ActionPanels y submenús
-│   ├── package.json         # Dependencias (@raycast/api, React 19, ESLint 9 Flat Config)
-│   └── tsconfig.json
-│
-├── tui/                     # 🔵 App 2: CLI y TUI Nativa (Go)
-│   ├── cmd/
-│   │   └── foltty/
-│   │       └── main.go      # Entrypoint de Go (TUI interactiva + CLI)
-│   ├── internal/
-│   │   └── project/
-│   │       └── project.go   # Lógica compartida de rutas, presets y Ghostty
-│   └── go.mod
-│
-├── .github/workflows/       # 🚀 Pipelines CI/CD (GitHub Actions)
-│   ├── ci.yml               # Verificación de linter, compilación de Go y Raycast
-│   └── release.yml          # Publicación automática de binarios en GitHub Releases
-│
-├── install.sh               # 📦 Script de instalación de un solo comando
-├── Makefile                 # 🛠️ Orquestador raíz único para ambos proyectos
-└── README.md                # Documentación central
-```
+**Foltty** eliminates friction when switching projects:
+1. **Outside the terminal (Browser, Slack, Figma):** Trigger Raycast (`foltty`), fuzzy-search your project, and hit `Enter` to launch a clean terminal window directly in that directory.
+2. **Inside the terminal (Ghostty, tmux, zsh):** Keep your hands on the keyboard—run `foltty` (or `Ctrl+P`) to navigate through an interactive TUI with instant live preview.
+3. **Single Source of Truth:** Both environments share the same persistent storage (`~/.foltty_projects` and `~/.foltty_presets.json`). Anything added or removed in Raycast syncs immediately to the CLI, and vice versa.
 
 ---
 
-## 🌟 Sistema de Presets y Alias
+## 🖥️ Multi-Terminal Emulator Support
 
-Foltty incluye atajos preconfigurados para las carpetas más comunes de macOS y te permite definir tus propios alias personalizados:
+Foltty is not limited to a single terminal emulator. It auto-detects and supports the top terminal emulators on macOS:
 
-### Presets Nativos Incluidos:
-- **`~` / `home`** ➔ Directorio personal (`$HOME`)
+| Terminal | Supported | Launch Method |
+| :--- | :---: | :--- |
+| **Ghostty** | ✅ | Native window with `--working-directory` |
+| **iTerm2** | ✅ | Direct folder launch / AppleScript tab support |
+| **WezTerm** | ✅ | `wezterm start --cwd` |
+| **Warp** | ✅ | Native directory targeting |
+| **Alacritty**| ✅ | `--working-directory` |
+| **Kitty** | ✅ | `--directory` |
+| **Apple Terminal** | ✅ | Default macOS Terminal fallback |
+
+### Terminal Configuration:
+- **In Raycast:** Open Raycast Settings ➔ Extensions ➔ **Foltty** ➔ Select your **Default Terminal Emulator** in the dropdown.
+- **In Go CLI / TUI:**
+  ```bash
+  foltty terminal            # List detected terminal emulators
+  foltty terminal set ghostty # Set default terminal
+  foltty open my-project iterm # Open project in a specific terminal
+  ```
+
+---
+
+## 🌟 Built-in & Custom Presets
+
+Foltty recognizes standard system shortcuts and allows you to define custom aliases:
+
+### Default Presets:
+- **`~` / `home`** ➔ Home directory (`$HOME`)
 - **`docs` / `documents`** ➔ `~/Documents`
 - **`downloads`** ➔ `~/Downloads`
 - **`desktop`** ➔ `~/Desktop`
-- **`dev`** ➔ Carpeta de desarrollo detectada (`~/Development`, `~/Developer`, `~/Projects`)
+- **`dev`** ➔ Auto-detected development folder (`~/Development`, `~/Developer`, `~/Projects`)
 - **`config`** ➔ `~/.config`
+
+### Managing Custom Presets:
+```bash
+# Add custom alias
+foltty preset add work ~/Development/enterprise-project
+foltty preset add blog ~/Sites/my-blog
+
+# Use the preset
+foltty add work
+foltty open work
+
+# Remove a preset
+foltty preset rm work
+```
 
 ---
 
-## 🚀 Guía de Uso
+## 🚀 Usage Guide
 
-### 1. Extensión para Raycast (GUI)
+### 1. Raycast Extension (GUI)
 
-Inicia la extensión en modo desarrollo con Hot Reload:
+Run in local development mode with live Hot Reload:
 ```bash
 make dev
 ```
-1. Abre Raycast (`⌥ + Espacio` o `⌘ + Espacio`).
-2. Escribe **`Foltty`** o **`Buscar Proyectos`** y presiona `Enter`.
-3. **Atajos clave en Raycast:**
-   - `Enter`: Abre la carpeta seleccionada en una nueva ventana de Ghostty.
-   - `⌘ + Enter`: Muestra el proyecto en Finder.
-   - `⌘ + ⇧ + A`: Abre el submenú de **Presets Rápidos** (Home, Docs, Dev, etc.).
-   - `⌘ + N`: Formulario para agregar una carpeta manual o desde preset con dropdown.
-   - `⌘ + ⌫`: Remueve el proyecto de la lista.
-   - Menú de acciones (`⌘ + K`) ➔ *"Guardar como Preset Custom..."*: Asigna un alias a cualquier carpeta.
+1. Open Raycast (`⌥ + Space` or `⌘ + Space`).
+2. Search for **`Foltty`** or **`Search Projects`** and press `Enter`.
+3. **Key Shortcuts in Raycast:**
+   - `Enter`: Open selected project in your preferred terminal emulator.
+   - `⌘ + T`: Open submenu to choose a specific terminal (Ghostty, iTerm, WezTerm, Warp, etc.).
+   - `⌘ + Enter`: Reveal folder in Finder.
+   - `⌘ + ⇧ + A`: Quick Presets submenu (Home, Docs, Dev, etc.).
+   - `⌘ + N`: Add new project form with preset dropdown or Finder picker.
+   - `⌘ + ⌫`: Remove project from list.
+   - Action Menu (`⌘ + K`) ➔ *"Save as Custom Preset..."*: Assign a reusable alias to any project.
 
 ---
 
-### 2. TUI y CLI en la Terminal (Go)
+### 2. Standalone Terminal TUI & CLI (Go)
 
-Compila y lanza la TUI interactiva nativa escrita en Go:
+Launch the interactive TUI directly:
 ```bash
 make tui
 ```
 
-O instala el binario `foltty` en tu sistema (`~/go/bin`):
+Install `foltty` globally into your system (`~/go/bin`):
 ```bash
 make install-tui
 ```
 
-Una vez instalado en tu `PATH`:
+**Common CLI Commands:**
 ```bash
-# Navegación interactiva con previsualización
-foltty
-
-# Gestión de rutas y proyectos
-foltty add           # Registra el directorio actual
-foltty add docs      # Agrega ~/Documents mediante preset
-foltty add ~         # Agrega tu Home
-foltty list          # Lista los proyectos registrados
-foltty list --json   # Salida en JSON para scripts
-foltty rm docs       # Remueve un proyecto o preset
-foltty open docs     # Abre directamente en Ghostty
-
-# Gestión de presets personalizados (alias)
-foltty preset                                   # Lista todos los presets disponibles
-foltty preset add work ~/Development/mi-empresa  # Crea un preset personalizado
-foltty add work                                 # Usa tu preset
-foltty preset rm work                           # Elimina el preset
+foltty              # Interactive TUI with fuzzy search and preview
+foltty add          # Register current directory in Foltty
+foltty add docs     # Register ~/Documents via preset
+foltty add ~        # Register Home directory
+foltty list         # Print registered projects
+foltty list --json  # Output in JSON format for automation
+foltty rm docs      # Remove project or preset from list
+foltty open docs    # Launch directly in your preferred terminal
 ```
 
 ---
 
-## 🛠️ Comandos del Makefile Central
+## 🏗️ Monorepo Architecture
 
-El proyecto utiliza un **único Makefile orquestador** en la raíz:
+```tree
+foltty/
+├── raycast/                 # 🟣 Raycast Extension (React + TypeScript)
+│   ├── assets/
+│   │   └── icon.png         # Extension icon (512x512)
+│   ├── src/
+│   │   ├── core/
+│   │   │   ├── terminal.ts  # Multi-terminal detection & execution engine
+│   │   │   └── projects.ts  # Shared persistent storage & presets
+│   │   └── index.tsx        # Raycast UI (ActionPanels, Form, List)
+│   ├── package.json         # Manifest, Preferences schema, ESLint 9 Flat Config
+│   ├── package-lock.json    # Store-compliant dependency lockfile
+│   └── tsconfig.json
+│
+├── tui/                     # 🔵 Go CLI / TUI (Zero-dependency native binary)
+│   ├── cmd/
+│   │   └── foltty/
+│   │       └── main.go      # CLI command router & argument parser
+│   ├── internal/
+│   │   ├── config/          # User preferences (~/.foltty_config.json)
+│   │   ├── terminal/        # Terminal detection & execution
+│   │   ├── project/         # Projects & presets storage engine
+│   │   └── ui/              # FZF runner with preview & Native TUI
+│   └── go.mod
+│
+├── .github/                 # 🚀 GitHub Workflows & Templates
+│   ├── workflows/
+│   │   ├── ci.yml           # CI validation (npm ci, ray lint, cross-platform Go build)
+│   │   └── release.yml      # Automatic GitHub Releases on v* tags
+│   ├── ISSUE_TEMPLATE/      # Feature Request & Bug Report templates
+│   └── pull_request_template.md
+│
+├── docs/
+│   └── EXAMPLE_PR.md        # Reference guide for issues and PR submissions
+├── install.sh               # 📦 1-line curl installer
+├── Makefile                 # 🛠️ Central monorepo orchestrator
+└── README.md                # Project documentation
+```
 
-| Comando | Acción |
+---
+
+## 🛠️ Central Makefile Commands
+
+| Command | Action |
 | :--- | :--- |
-| `make help` | Muestra el menú de ayuda con todos los comandos disponibles |
-| `make build` | Compila ambos proyectos (`bin/foltty` y `raycast/dist/`) |
-| `make dev` | Inicia el modo de desarrollo de Raycast con Hot Reload |
-| `make tui` | Compila y ejecuta la TUI nativa en Go |
-| `make install-tui` | Instala el binario `foltty` de Go en tu sistema (`~/go/bin`) |
-| `make preset` | Muestra todos los presets nativos y custom |
-| `make list` | Lista los proyectos registrados en la terminal |
-| `make add` | Agrega el directorio actual a Foltty |
-| `make lint-raycast`| Ejecuta el linter oficial de Raycast |
-| `make clean` | Limpia los binarios y carpetas de build temporales |
+| `make help` | Display available targets |
+| `make build` | Build both Go binary (`bin/foltty`) and Raycast extension (`raycast/dist/`) |
+| `make dev` | Start Raycast extension development server with Hot Reload |
+| `make tui` | Build and launch the native interactive terminal UI |
+| `make term` | Inspect all detected terminal emulators on this Mac |
+| `make preset` | List all available built-in and custom presets |
+| `make list` | List registered projects via CLI |
+| `make add` | Register current directory in Foltty |
+| `make lint-raycast`| Run official Raycast validator and linter |
+| `make clean` | Clean build artifacts and dist folders |
+
+---
+
+## 🤝 Contributing & Community
+
+Contributions are welcome! Please check our:
+- [Pull Request Template](.github/pull_request_template.md)
+- [Example PR & Issue Walkthrough](docs/EXAMPLE_PR.md)

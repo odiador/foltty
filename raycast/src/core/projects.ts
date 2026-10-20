@@ -1,10 +1,7 @@
-import { execFile } from "child_process";
 import fs from "fs";
 import { homedir } from "os";
 import path from "path";
-import { promisify } from "util";
-
-export const execFileAsync = promisify(execFile);
+import { openInTerminal, type TerminalId } from "./terminal";
 
 export const FOLTTY_FILE = path.join(homedir(), ".foltty_projects");
 export const PMAN_FILE = path.join(homedir(), ".pman_projects");
@@ -24,7 +21,6 @@ export interface FolttyPreset {
   isCustom: boolean;
 }
 
-// Determinar el archivo de persistencia principal
 export function getStorageFilePath(): string {
   if (fs.existsSync(FOLTTY_FILE)) {
     return FOLTTY_FILE;
@@ -47,19 +43,19 @@ export function getDefaultPresets(): FolttyPreset[] {
     { id: "home", name: "Home (~)", path: home, isCustom: false },
     {
       id: "documents",
-      name: "Documentos",
+      name: "Documents",
       path: path.join(home, "Documents"),
       isCustom: false,
     },
     {
       id: "downloads",
-      name: "Descargas",
+      name: "Downloads",
       path: path.join(home, "Downloads"),
       isCustom: false,
     },
     {
       id: "desktop",
-      name: "Escritorio",
+      name: "Desktop",
       path: path.join(home, "Desktop"),
       isCustom: false,
     },
@@ -77,7 +73,7 @@ export function getDefaultPresets(): FolttyPreset[] {
     if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
       presets.push({
         id: "dev",
-        name: `Desarrollo (${dir})`,
+        name: `Development (${dir})`,
         path: fullPath,
         isCustom: false,
       });
@@ -122,15 +118,12 @@ export function addCustomPreset(
 ): { success: boolean; message: string } {
   const trimmed = name.trim().toLowerCase();
   if (!trimmed) {
-    return {
-      success: false,
-      message: "El nombre del preset no puede estar vacío",
-    };
+    return { success: false, message: "Preset name cannot be empty" };
   }
 
   const normalized = normalizePath(targetPath);
   if (!fs.existsSync(normalized)) {
-    return { success: false, message: `La ruta no existe: ${normalized}` };
+    return { success: false, message: `Path does not exist: ${normalized}` };
   }
 
   const customs = getCustomPresets();
@@ -140,13 +133,10 @@ export function addCustomPreset(
     fs.writeFileSync(PRESETS_FILE, JSON.stringify(customs, null, 2), "utf-8");
     return {
       success: true,
-      message: `Preset guardado: ${trimmed} -> ${normalized}`,
+      message: `Preset saved: ${trimmed} -> ${normalized}`,
     };
   } catch (err) {
-    return {
-      success: false,
-      message: `Error al guardar preset: ${String(err)}`,
-    };
+    return { success: false, message: `Error saving preset: ${String(err)}` };
   }
 }
 
@@ -158,24 +148,18 @@ export function removeCustomPreset(name: string): {
   const customs = getCustomPresets();
 
   if (!(trimmed in customs)) {
-    return { success: false, message: `Preset no encontrado: ${name}` };
+    return { success: false, message: `Preset not found: ${name}` };
   }
 
   delete customs[trimmed];
   try {
     fs.writeFileSync(PRESETS_FILE, JSON.stringify(customs, null, 2), "utf-8");
-    return { success: true, message: `Preset removido: ${trimmed}` };
+    return { success: true, message: `Preset removed: ${trimmed}` };
   } catch (err) {
-    return {
-      success: false,
-      message: `Error al remover preset: ${String(err)}`,
-    };
+    return { success: false, message: `Error removing preset: ${String(err)}` };
   }
 }
 
-/**
- * Normaliza y expande rutas con ~
- */
 export function normalizePath(inputPath: string): string {
   let resolved = inputPath.trim();
   if (resolved.startsWith("~/")) {
@@ -206,9 +190,6 @@ export function resolvePresetOrPath(input: string): string {
   return normalizePath(trimmed);
 }
 
-/**
- * Obtiene la lista ordenada de proyectos registrados
- */
 export function getProjects(): FolttyProject[] {
   const filePath = getStorageFilePath();
   if (!fs.existsSync(filePath)) {
@@ -235,14 +216,11 @@ export function getProjects(): FolttyProject[] {
       };
     });
   } catch (error) {
-    console.error("Error al leer proyectos de foltty:", error);
+    console.error("Error reading foltty projects:", error);
     return [];
   }
 }
 
-/**
- * Agrega un proyecto a la lista si no existe
- */
 export function addProject(targetPath: string): {
   success: boolean;
   message: string;
@@ -251,22 +229,19 @@ export function addProject(targetPath: string): {
   const resolved = resolvePresetOrPath(targetPath);
 
   if (!fs.existsSync(resolved)) {
-    return { success: false, message: `La ruta no existe: ${resolved}` };
+    return { success: false, message: `Path does not exist: ${resolved}` };
   }
 
   const stat = fs.statSync(resolved);
   if (!stat.isDirectory()) {
-    return {
-      success: false,
-      message: `La ruta no es un directorio: ${resolved}`,
-    };
+    return { success: false, message: `Path is not a directory: ${resolved}` };
   }
 
   const projects = getProjects();
   if (projects.some((p) => p.path === resolved)) {
     return {
       success: false,
-      message: `El proyecto ya está registrado: ${resolved}`,
+      message: `Project already registered: ${resolved}`,
     };
   }
 
@@ -277,13 +252,13 @@ export function addProject(targetPath: string): {
     try {
       fs.appendFileSync(PMAN_FILE, `${resolved}\n`, "utf-8");
     } catch {
-      // Ignorar error secundario
+      // Ignore secondary error
     }
   }
 
   return {
     success: true,
-    message: `Proyecto agregado: ${resolved}`,
+    message: `Project added: ${resolved}`,
     project: {
       id: resolved,
       name: path.basename(resolved) || resolved,
@@ -293,9 +268,6 @@ export function addProject(targetPath: string): {
   };
 }
 
-/**
- * Elimina un proyecto por su ruta o nombre
- */
 export function removeProject(targetPath: string): {
   success: boolean;
   message: string;
@@ -309,7 +281,7 @@ export function removeProject(targetPath: string): {
   if (updated.length === projects.length) {
     return {
       success: false,
-      message: `Proyecto no encontrado en la lista: ${targetPath}`,
+      message: `Project not found in list: ${targetPath}`,
     };
   }
 
@@ -322,27 +294,26 @@ export function removeProject(targetPath: string): {
     try {
       fs.writeFileSync(PMAN_FILE, content, "utf-8");
     } catch {
-      // Ignorar error secundario
+      // Ignore secondary error
     }
   }
 
-  return { success: true, message: `Proyecto removido exitosamente.` };
+  return { success: true, message: `Project removed successfully.` };
 }
 
-/**
- * Abre la ruta especificada en una instancia limpia de Ghostty
- */
-export async function openInGhostty(projectPath: string): Promise<void> {
+export async function openProjectInTerminal(
+  projectPath: string,
+  terminal?: TerminalId,
+): Promise<void> {
   const resolved = resolvePresetOrPath(projectPath);
 
   if (!fs.existsSync(resolved)) {
-    throw new Error(`El directorio no existe en el disco: ${resolved}`);
+    throw new Error(`Directory does not exist on disk: ${resolved}`);
   }
 
-  await execFileAsync("open", [
-    "-na",
-    "Ghostty",
-    "--args",
-    `--working-directory=${resolved}`,
-  ]);
+  await openInTerminal(resolved, terminal);
+}
+
+export async function openInGhostty(projectPath: string): Promise<void> {
+  await openProjectInTerminal(projectPath, "ghostty");
 }

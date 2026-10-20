@@ -5,9 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/odiador/foltty/internal/terminal"
 )
 
 type Project struct {
@@ -66,7 +67,6 @@ func GetDefaultPresets() []Preset {
 		{ID: "config", Name: "Config (.config)", Path: filepath.Join(home, ".config"), IsCustom: false},
 	}
 
-	// Verificar carpetas de desarrollo comunes
 	devDirs := []string{"Development", "Developer", "Projects", "Code", "workspace"}
 	for _, dir := range devDirs {
 		p := filepath.Join(home, dir)
@@ -128,7 +128,7 @@ func GetAllPresets() ([]Preset, error) {
 func AddCustomPreset(name, targetPath string) error {
 	trimmedName := strings.ToLower(strings.TrimSpace(name))
 	if trimmedName == "" {
-		return errors.New("el nombre del preset no puede estar vacío")
+		return errors.New("preset name cannot be empty")
 	}
 
 	norm, err := NormalizePath(targetPath)
@@ -164,7 +164,7 @@ func RemoveCustomPreset(name string) error {
 	}
 
 	if _, ok := custom[trimmedName]; !ok {
-		return fmt.Errorf("preset custom no encontrado: %s", name)
+		return fmt.Errorf("custom preset not found: %s", name)
 	}
 
 	delete(custom, trimmedName)
@@ -185,10 +185,9 @@ func RemoveCustomPreset(name string) error {
 func ResolvePresetOrPath(input string) (string, error) {
 	trimmed := strings.TrimSpace(input)
 	if trimmed == "" {
-		return "", errors.New("la ruta o preset no puede estar vacío")
+		return "", errors.New("path or preset cannot be empty")
 	}
 
-	// 1. Verificar si coincide con algún preset (por ID o Alias)
 	lower := strings.ToLower(trimmed)
 	presets, _ := GetAllPresets()
 	for _, p := range presets {
@@ -197,14 +196,13 @@ func ResolvePresetOrPath(input string) (string, error) {
 		}
 	}
 
-	// 2. Normalizar como ruta de archivo ordinaria
 	return NormalizePath(trimmed)
 }
 
 func NormalizePath(input string) (string, error) {
 	trimmed := strings.TrimSpace(input)
 	if trimmed == "" {
-		return "", errors.New("la ruta no puede estar vacía")
+		return "", errors.New("path cannot be empty")
 	}
 
 	if strings.HasPrefix(trimmed, "~/") || trimmed == "~" {
@@ -281,10 +279,10 @@ func AddProject(targetPath string) error {
 
 	stat, err := os.Stat(resolved)
 	if err != nil {
-		return fmt.Errorf("la ruta no existe: %s", resolved)
+		return fmt.Errorf("path does not exist: %s", resolved)
 	}
 	if !stat.IsDir() {
-		return fmt.Errorf("la ruta no es un directorio: %s", resolved)
+		return fmt.Errorf("path is not a directory: %s", resolved)
 	}
 
 	projects, err := GetProjects()
@@ -294,7 +292,7 @@ func AddProject(targetPath string) error {
 
 	for _, p := range projects {
 		if p.Path == resolved {
-			return fmt.Errorf("el proyecto ya está registrado: %s", resolved)
+			return fmt.Errorf("project already registered: %s", resolved)
 		}
 	}
 
@@ -339,7 +337,7 @@ func RemoveProject(targetPath string) error {
 	}
 
 	if !found {
-		return fmt.Errorf("proyecto no encontrado en la lista: %s", targetPath)
+		return fmt.Errorf("project not found in list: %s", targetPath)
 	}
 
 	storagePath, err := GetStoragePath()
@@ -355,16 +353,11 @@ func RemoveProject(targetPath string) error {
 	return os.WriteFile(storagePath, []byte(content), 0644)
 }
 
-func OpenInGhostty(targetPath string) error {
+func OpenInTerminal(targetPath string, termID terminal.TerminalID) error {
 	resolved, err := ResolvePresetOrPath(targetPath)
 	if err != nil {
 		return err
 	}
 
-	if _, err := os.Stat(resolved); err != nil {
-		return fmt.Errorf("el directorio no existe: %s", resolved)
-	}
-
-	cmd := exec.Command("open", "-na", "Ghostty", "--args", fmt.Sprintf("--working-directory=%s", resolved))
-	return cmd.Run()
+	return terminal.Launch(termID, resolved)
 }

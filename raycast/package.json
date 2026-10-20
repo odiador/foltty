@@ -2,7 +2,7 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "foltty",
   "title": "Foltty",
-  "description": "Selector moderno de proyectos para Ghostty en Raycast",
+  "description": "Universal project and folder launcher for macOS terminal emulators",
   "icon": "icon.png",
   "author": "Developer",
   "categories": [
@@ -12,9 +12,53 @@
   "commands": [
     {
       "name": "index",
-      "title": "Buscar Proyectos",
-      "description": "Muestra la lista de proyectos y los abre directamente en Ghostty",
+      "title": "Search Projects",
+      "description": "Browse registered projects and launch them in your preferred terminal",
       "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "defaultTerminal",
+      "type": "dropdown",
+      "title": "Default Terminal Emulator",
+      "description": "Choose which terminal emulator to open projects with",
+      "default": "auto",
+      "required": false,
+      "data": [
+        {
+          "title": "Auto Detect (Ghostty > iTerm2 > WezTerm > Warp > Terminal)",
+          "value": "auto"
+        },
+        {
+          "title": "Ghostty",
+          "value": "ghostty"
+        },
+        {
+          "title": "iTerm2",
+          "value": "iterm"
+        },
+        {
+          "title": "WezTerm",
+          "value": "wezterm"
+        },
+        {
+          "title": "Alacritty",
+          "value": "alacritty"
+        },
+        {
+          "title": "Kitty",
+          "value": "kitty"
+        },
+        {
+          "title": "Warp",
+          "value": "warp"
+        },
+        {
+          "title": "Apple Terminal",
+          "value": "terminal"
+        }
+      ]
     }
   ],
   "dependencies": {
@@ -25,7 +69,7 @@
     "@raycast/eslint-config": "2.2.0",
     "@types/node": "^22.13.0",
     "@types/react": "^19.0.0",
-    "eslint": "^9.39.5",
+    "eslint": "^9.0.0",
     "prettier": "^3.4.2",
     "react": "^19.0.0",
     "typescript": "^5.7.3"
