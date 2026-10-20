@@ -1,58 +1,20 @@
-# 👻 Foltty (Monorepo)
+# 👻 Foltty
 
-> **El gestor de proyectos ultra-rápido para Ghostty.**  
-> Arquitectura monorepo con **Extensión Nativa para Raycast** y **TUI / CLI Nativa en Go**, con soporte completo para **Presets y Alias Personalizados**.
-
----
-
-## 🎯 Gestión de Rutas y Presets
-
-Foltty permite agregar o eliminar rutas rápidamente usando nombres estándar o tus propios presets personalizados.
-
-### 🌟 Presets Nativos Incluidos:
-- `~` o `home` ➔ Tu directorio personal (`$HOME`)
-- `docs` o `documents` ➔ `~/Documents`
-- `downloads` ➔ `~/Downloads`
-- `desktop` ➔ `~/Desktop`
-- `dev` ➔ Carpeta de desarrollo detectada (`~/Development`, `~/Developer` o `~/Projects`)
-- `config` ➔ `~/.config`
+> **`folder` + `tty` = `foltty`** ⚡  
+> El selector ultra-rápido de proyectos para **Ghostty**, diseñado como un monorepo con **Extensión Nativa de Raycast** y **TUI / CLI en Go**.
 
 ---
 
-## ⚡ Cómo Usar Presets
+## 💡 El Concepto: ¿Por qué Foltty?
 
-### 1. Desde la Terminal (CLI en Go)
+El nombre nace de la combinación de:
+- **`folder`** (tus carpetas y proyectos de desarrollo)
+- **`tty`** (tu terminal, optimizada especialmente para **Ghostty**)
 
-```bash
-# Ver todos los presets disponibles (built-in + customs)
-foltty preset
-
-# Agregar un preset directamente a tu lista activa
-foltty add docs
-foltty add ~
-foltty add dev
-
-# Crear tu propio preset personalizado (alias)
-foltty preset add work ~/Development/empresa/proyecto-principal
-foltty preset add blog ~/Sites/mi-blog
-
-# Usar tu preset personalizado
-foltty add work
-
-# Abrir directamente en Ghostty mediante un preset
-foltty open docs
-
-# Eliminar un proyecto o preset de tu lista
-foltty rm docs
-foltty preset rm work
-```
-
-### 2. Desde Raycast (Interfaz Gráfica)
-
-- **Submenú de Presets (`⌘ + ⇧ + A`):** Dentro del menú de acciones de cualquier proyecto, entra en **"Agregar desde Preset..."** y selecciona `Documentos`, `Home`, `Descargas` o tus presets custom para añadirlos en 1 clic.
-- **Formulario de Adición (`⌘ + N`):** Cuenta con un selector dropdown superior donde puedes elegir un preset o seleccionar una carpeta en Finder.
-- **Guardar como Preset Custom:** Puedes convertir cualquier proyecto de tu lista en un preset personalizado con su propio alias para reutilizarlo en la terminal y en Raycast.
-- **Vista Vacía:** Si la lista está vacía, Raycast te sugiere botones directos para agregar tus carpetas principales al instante.
+La misión de **Foltty** es eliminar toda la fricción entre encontrar un proyecto y empezar a trabajar en él:
+1. **Fuera de la terminal (Navegador, Slack, Figma):** Invocas Raycast (`foltty`), filtras tu proyecto y con un `Enter` se abre una ventana limpia de Ghostty posicionada en la raíz del proyecto.
+2. **Dentro de la terminal (Ghostty, tmux, zsh):** No necesitas cambiar de aplicación ni usar el ratón; ejecutas `foltty` (o `Ctrl+P`) y navegas por la TUI interactiva con previsualización en tiempo real.
+3. **Estado 100% Sincronizado:** Ambos mundos leen y escriben en el mismo archivo (`~/.foltty_projects`), por lo que cualquier proyecto o preset agregado se refleja al instante en ambos entornos.
 
 ---
 
@@ -60,41 +22,113 @@ foltty preset rm work
 
 ```tree
 foltty/
-├── raycast/                 # 🟣 App 1: Extensión Oficial de Raycast (React + TS)
+├── raycast/                 # 🟣 App 1: Extensión Oficial de Raycast (React + TypeScript)
 │   ├── assets/
 │   │   └── icon.png         # Icono oficial (512x512)
 │   ├── src/
 │   │   ├── core/
-│   │   │   └── projects.ts  # Soporte de proyectos y presets compartidos
-│   │   └── index.tsx        # Interfaz de Raycast con Submenús de Presets
+│   │   │   └── projects.ts  # Motor de persistencia y llamada a Ghostty
+│   │   └── index.tsx        # Interfaz de Raycast con ActionPanels y submenús
 │   ├── package.json         # Dependencias (@raycast/api, React 19)
 │   └── tsconfig.json
 │
 ├── tui/                     # 🔵 App 2: CLI y TUI Nativa (Go)
 │   ├── cmd/
 │   │   └── foltty/
-│   │       └── main.go      # Entrypoint de Go (CLI + Presets + TUI)
+│   │       └── main.go      # Entrypoint de Go (TUI interactiva + CLI)
 │   ├── internal/
 │   │   └── project/
-│   │       └── project.go   # Motor de rutas, presets y Ghostty
+│   │       └── project.go   # Lógica compartida de rutas, presets y Ghostty
 │   └── go.mod
 │
-├── Makefile                 # 🛠️ Orquestador central del monorepo
-└── README.md
+├── Makefile                 # 🛠️ Orquestador raíz único para ambos proyectos
+└── README.md                # Documentación central
+```
+
+---
+
+## 🌟 Sistema de Presets y Alias
+
+Foltty incluye atajos preconfigurados para las carpetas más comunes de macOS y te permite definir tus propios alias personalizados:
+
+### Presets Nativos Incluidos:
+- **`~` / `home`** ➔ Directorio personal (`$HOME`)
+- **`docs` / `documents`** ➔ `~/Documents`
+- **`downloads`** ➔ `~/Downloads`
+- **`desktop`** ➔ `~/Desktop`
+- **`dev`** ➔ Carpeta de desarrollo detectada (`~/Development`, `~/Developer`, `~/Projects`)
+- **`config`** ➔ `~/.config`
+
+---
+
+## 🚀 Guía de Uso
+
+### 1. Extensión para Raycast (GUI)
+
+Inicia la extensión en modo desarrollo con Hot Reload:
+```bash
+make dev
+```
+1. Abre Raycast (`⌥ + Espacio` o `⌘ + Espacio`).
+2. Escribe **`Foltty`** o **`Buscar Proyectos`** y presiona `Enter`.
+3. **Atajos clave en Raycast:**
+   - `Enter`: Abre la carpeta seleccionada en una nueva ventana de Ghostty.
+   - `⌘ + Enter`: Muestra el proyecto en Finder.
+   - `⌘ + ⇧ + A`: Abre el submenú de **Presets Rápidos** (Home, Docs, Dev, etc.).
+   - `⌘ + N`: Formulario para agregar una carpeta manual o desde preset con dropdown.
+   - `⌘ + ⌫`: Remueve el proyecto de la lista.
+   - Menú de acciones (`⌘ + K`) ➔ *"Guardar como Preset Custom..."*: Asigna un alias a cualquier carpeta.
+
+---
+
+### 2. TUI y CLI en la Terminal (Go)
+
+Compila y lanza la TUI interactiva nativa escrita en Go:
+```bash
+make tui
+```
+
+O instala el binario `foltty` en tu sistema (`~/go/bin`):
+```bash
+make install-tui
+```
+
+Una vez instalado en tu `PATH`:
+```bash
+# Navegación interactiva con previsualización
+foltty
+
+# Gestión de rutas y proyectos
+foltty add           # Registra el directorio actual
+foltty add docs      # Agrega ~/Documents mediante preset
+foltty add ~         # Agrega tu Home
+foltty list          # Lista los proyectos registrados
+foltty list --json   # Salida en JSON para scripts
+foltty rm docs       # Remueve un proyecto o preset
+foltty open docs     # Abre directamente en Ghostty
+
+# Gestión de presets personalizados (alias)
+foltty preset                                   # Lista todos los presets disponibles
+foltty preset add work ~/Development/mi-empresa  # Crea un preset personalizado
+foltty add work                                 # Usa tu preset
+foltty preset rm work                           # Elimina el preset
 ```
 
 ---
 
 ## 🛠️ Comandos del Makefile Central
 
-| Comando | Descripción |
+El proyecto utiliza un **único Makefile orquestador** en la raíz para evitar la sobrecarga de entrar y salir de carpetas:
+
+| Comando | Acción |
 | :--- | :--- |
-| `make help` | Muestra el menú de ayuda con todos los comandos |
-| `make preset` | Muestra todos los presets disponibles (Home, Docs, Dev, Customs) |
-| `make add` | Agrega el directorio actual a la lista de Foltty |
-| `make list` | Lista los proyectos registrados en la terminal |
+| `make help` | Muestra el menú de ayuda con todos los comandos disponibles |
 | `make build` | Compila ambos proyectos (`bin/foltty` y `raycast/dist/`) |
-| `make dev` | Inicia el modo desarrollo de Raycast con Hot Reload |
+| `make dev` | Inicia el modo de desarrollo de Raycast con Hot Reload |
 | `make tui` | Compila y ejecuta la TUI nativa en Go |
 | `make install-tui` | Instala el binario `foltty` de Go en tu sistema (`~/go/bin`) |
+| `make preset` | Muestra todos los presets nativos y custom |
+| `make list` | Lista los proyectos registrados en la terminal |
+| `make add` | Agrega el directorio actual a Foltty |
+| `make lint-raycast`| Ejecuta el linter oficial de Raycast |
 | `make clean` | Limpia los binarios y carpetas de build temporales |
