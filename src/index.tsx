@@ -10,73 +10,25 @@ import {
   useNavigation,
   Form,
 } from "@raycast/api";
-import { execFile } from "child_process";
-import fs from "fs";
 import { homedir } from "os";
 import path from "path";
 import { useState, useEffect, useCallback } from "react";
-import { promisify } from "util";
-
-const execFileAsync = promisify(execFile);
-const PMAN_FILE = path.join(homedir(), ".pman_projects");
-
-interface Project {
-  id: string;
-  name: string;
-  path: string;
-  exists: boolean;
-}
-
-// Lee los proyectos de ~/.pman_projects
-function readProjectsFromFile(): Project[] {
-  if (!fs.existsSync(PMAN_FILE)) {
-    return [];
-  }
-
-  try {
-    const content = fs.readFileSync(PMAN_FILE, "utf-8");
-    const lines = content
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith("#"));
-
-    // Eliminar duplicados manteniendo el orden
-    const uniquePaths = Array.from(new Set(lines));
-
-    return uniquePaths.map((projPath) => {
-      // Normalizar ~ a homedir si es necesario
-      const expandedPath = projPath.startsWith("~/")
-        ? path.join(homedir(), projPath.slice(2))
-        : projPath;
-
-      const exists = fs.existsSync(expandedPath);
-      return {
-        id: projPath,
-        name: path.basename(expandedPath) || expandedPath,
-        path: expandedPath,
-        exists,
-      };
-    });
-  } catch (error) {
-    console.error("Error al leer archivo pman:", error);
-    return [];
-  }
-}
-
-// Guarda la lista de proyectos en ~/.pman_projects
-function saveProjectsToFile(projects: Project[]): void {
-  const content =
-    projects.map((p) => p.path).join("\n") + (projects.length > 0 ? "\n" : "");
-  fs.writeFileSync(PMAN_FILE, content, "utf-8");
-}
+import {
+  getProjects,
+  addProject,
+  removeProject,
+  openInGhostty,
+  getStorageFilePath,
+  type FolttyProject,
+} from "./core/projects";
 
 export default function Command() {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<FolttyProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadProjects = useCallback(() => {
     setIsLoading(true);
-    const list = readProjectsFromFile();
+    const list = getProjects();
     setProjects(list);
     setIsLoading(false);
   }, []);
@@ -85,25 +37,10 @@ export default function Command() {
     loadProjects();
   }, [loadProjects]);
 
-  // Abrir la ruta seleccionada en Ghostty con ventana limpia
-  const openInGhostty = async (projectPath: string) => {
-    if (!fs.existsSync(projectPath)) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Directorio no encontrado",
-        message: projectPath,
-      });
-      return;
-    }
-
+  const handleOpenGhostty = async (projectPath: string) => {
     try {
       await closeMainWindow();
-      await execFileAsync("open", [
-        "-na",
-        "Ghostty",
-        "--args",
-        `--working-directory=${projectPath}`,
-      ]);
+      await openInGhostty(projectPath);
     } catch (error) {
       await showToast({
         style: Toast.Style.Failure,
@@ -113,18 +50,25 @@ export default function Command() {
     }
   };
 
-  // Eliminar el proyecto de la lista y del archivo
-  const deleteProject = async (project: Project) => {
-    const updated = projects.filter((p) => p.id !== project.id);
-    setProjects(updated);
-    saveProjectsToFile(updated);
-
-    await showToast({
-      style: Toast.Style.Success,
-      title: "Proyecto removido",
-      message: project.name,
-    });
+  const handleDelete = async (project: FolttyProject) => {
+    const res = removeProject(project.path);
+    if (res.success) {
+      loadProjects();
+      await showToast({
+        style: Toast.Style.Success,
+        title: "Proyecto Removido",
+        message: project.name,
+      });
+    } else {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Error al Remover",
+        message: res.message,
+      });
+    }
   };
+
+  const storageFile = getStorageFilePath();
 
   return (
     <List
@@ -134,8 +78,8 @@ export default function Command() {
       {projects.length === 0 && !isLoading ? (
         <List.EmptyView
           icon={Icon.Folder}
-          title="No hay proyectos registrados"
-          description="Presiona ⌘+N para agregar un proyecto, o usa 'padd' en tu terminal."
+          title="No hay proyectos registrados en Foltty"
+          description="Presiona ⌘+N para agregar un proyecto, o usa 'foltty add' en tu terminal."
           actions={
             <ActionPanel>
               <Action.Push
@@ -144,8 +88,8 @@ export default function Command() {
                 target={<AddProjectForm onProjectAdded={loadProjects} />}
               />
               <Action.OpenWith
-                title="Abrir ~/.pman_projects"
-                path={PMAN_FILE}
+                title="Abrir Archivo De Proyectos"
+                path={storageFile}
                 shortcut={{ modifiers: ["cmd", "shift"], key: "p" }}
               />
             </ActionPanel>
@@ -176,7 +120,7 @@ export default function Command() {
                   <Action
                     title="Abrir En Ghostty"
                     icon={Icon.Terminal}
-                    onAction={() => openInGhostty(project.path)}
+                    onAction={() => handleOpenGhostty(project.path)}
                   />
                 </ActionPanel.Section>
 
@@ -208,7 +152,7 @@ export default function Command() {
                     icon={Icon.Trash}
                     style={Action.Style.Destructive}
                     shortcut={{ modifiers: ["cmd"], key: "backspace" }}
-                    onAction={() => deleteProject(project)}
+                    onAction={() => handleDelete(project)}
                   />
                   <Action
                     title="Recargar Lista"
@@ -232,7 +176,7 @@ function AddProjectForm({ onProjectAdded }: { onProjectAdded: () => void }) {
   const [customPath, setCustomPath] = useState<string>("");
 
   const handleSubmit = async () => {
-    let target = folderPath.length > 0 ? folderPath[0] : customPath.trim();
+    const target = folderPath.length > 0 ? folderPath[0] : customPath.trim();
 
     if (!target) {
       await showToast({
@@ -242,34 +186,19 @@ function AddProjectForm({ onProjectAdded }: { onProjectAdded: () => void }) {
       return;
     }
 
-    if (target.startsWith("~/")) {
-      target = path.join(homedir(), target.slice(2));
-    }
-
-    if (!fs.existsSync(target)) {
+    const res = addProject(target);
+    if (!res.success) {
       await showToast({
         style: Toast.Style.Failure,
-        title: "La carpeta no existe",
-        message: target,
+        title: "No se pudo agregar el proyecto",
+        message: res.message,
       });
       return;
     }
-
-    const currentProjects = readProjectsFromFile();
-    if (currentProjects.some((p) => p.path === target)) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "El proyecto ya está en la lista",
-      });
-      return;
-    }
-
-    // Append to file
-    fs.appendFileSync(PMAN_FILE, `${target}\n`, "utf-8");
 
     await showToast({
       style: Toast.Style.Success,
-      title: "Proyecto agregado exitosamente",
+      title: "Proyecto Agregado",
       message: path.basename(target),
     });
 
@@ -297,7 +226,7 @@ function AddProjectForm({ onProjectAdded }: { onProjectAdded: () => void }) {
       />
       <Form.TextField
         id="customPath"
-        title="O escribir Ruta"
+        title="O Escribir Ruta"
         placeholder="/Users/usuario/Proyectos/mi-proyecto"
         value={customPath}
         onChange={setCustomPath}
