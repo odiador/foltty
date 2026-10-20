@@ -1,0 +1,39 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "ghostty-project-manager",
+  "title": "Ghostty Project Manager",
+  "description": "Selector visual y moderno de proyectos para Ghostty basado en pman",
+  "icon": "icon.png",
+  "author": "Developer",
+  "categories": [
+    "Developer Tools"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "index",
+      "title": "Buscar Proyectos",
+      "description": "Muestra la lista de proyectos y los abre directamente en Ghostty",
+      "mode": "view"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^2.8.2",
+    "@raycast/utils": "^2.3.3"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "^22.13.0",
+    "@types/react": "^19.0.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.4.2",
+    "react": "^19.0.0",
+    "typescript": "^5.7.3"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "lint": "ray lint",
+    "fix-lint": "ray lint --fix"
+  }
+}
