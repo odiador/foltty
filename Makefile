@@ -1,53 +1,55 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev build lint fix clean clean-all tui list add link build-go install-go tui-go
+.PHONY: help install build dev dev-raycast build-raycast lint-raycast fix-raycast build-tui tui install-tui list add clean clean-all
 
 help: ## Muestra este menú de ayuda
 	@echo ""
-	@echo "👻 Foltty - Project Manager para Ghostty (Raycast & Go TUI)"
-	@echo "============================================================"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo "👻 Foltty Monorepo (Raycast + Go TUI)"
+	@echo "======================================"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
 
-install: ## Instala dependencias de Raycast (pnpm) y Go
-	pnpm install
-	go mod download
+install: ## Instala dependencias de ambos proyectos (Raycast y Go)
+	cd raycast && pnpm install
+	cd tui && go mod download
 
-dev: ## Inicia el modo de desarrollo de Raycast con Hot Reload
-	pnpm run dev
+build: build-tui build-raycast ## Compila ambos proyectos (Go binario y extensión Raycast)
 
-build: ## Compila la extensión de Raycast para producción (dist/)
-	pnpm run build
+# --- Go TUI / CLI ---
+build-tui: ## Compila el binario de Go en bin/foltty
+	mkdir -p bin
+	cd tui && go build -o ../bin/foltty ./cmd/foltty
 
-build-go: ## Compila el binario nativo en Go (bin/foltty-go)
-	go build -o bin/foltty-go ./cmd/foltty
+tui: build-tui ## Ejecuta la TUI interactiva en Go
+	./bin/foltty
 
-install-go: ## Instala el binario 'foltty' globalmente vía Go (~/go/bin)
-	go install ./cmd/foltty
+install-tui: ## Instala 'foltty' globalmente en tu sistema (~/go/bin)
+	cd tui && go install ./cmd/foltty
 
-tui-go: build-go ## Ejecuta la TUI nativa en Go
-	./bin/foltty-go
+list: build-tui ## Lista los proyectos registrados usando el binario de Go
+	./bin/foltty list
 
-tui: ## Abre la TUI interactiva en la terminal (Node/TSX)
-	./bin/foltty.js
+add: build-tui ## Agrega el directorio actual a la lista
+	./bin/foltty add
 
-list: ## Lista todos los proyectos registrados
-	./bin/foltty.js list
+# --- Raycast Extension ---
+dev: dev-raycast ## Alias para dev-raycast
 
-add: ## Agrega el directorio actual a Foltty
-	./bin/foltty.js add
+dev-raycast: ## Inicia el servidor de desarrollo de Raycast con Hot Reload
+	cd raycast && pnpm run dev
 
-link: ## Enlaza el comando 'foltty' globalmente en tu sistema vía pnpm
-	pnpm link --global
+build-raycast: ## Compila la extensión de Raycast para distribución (raycast/dist/)
+	cd raycast && pnpm run build
 
-lint: ## Ejecuta las verificaciones de formato y linter de Raycast
-	pnpm run lint
+lint-raycast: ## Valida el linter oficial de Raycast
+	cd raycast && pnpm run lint
 
-fix: ## Corrige automáticamente errores de formato y linter
-	pnpm run fix-lint
+fix-raycast: ## Corrige automáticamente estilos y formato de Raycast
+	cd raycast && pnpm run fix-lint
 
-clean: ## Elimina los archivos de compilación generados (dist/ y bin/foltty-go)
-	rm -rf dist bin/foltty-go
+# --- Limpieza ---
+clean: ## Limpia los artefactos generados (bin/ y raycast/dist)
+	rm -rf bin raycast/dist
 
-clean-all: clean ## Elimina dist/, bin/foltty-go y node_modules
-	rm -rf node_modules
+clean-all: clean ## Limpia bin/, raycast/dist y node_modules
+	rm -rf raycast/node_modules

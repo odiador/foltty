@@ -1,89 +1,95 @@
-# 👻 Foltty
+# 👻 Foltty (Monorepo)
 
 > **El gestor de proyectos ultra-rápido para Ghostty.**  
-> Disponible como **Extensión Nativa para Raycast** y como **TUI / CLI Nativa en Go**.
+> Arquitectura monorepo compuesta por la **Extensión Nativa para Raycast** y la **TUI / CLI Nativa en Go**.
 
 ---
 
-## 💡 Arquitectura Híbrida: Raycast (React/TSX) + Go (TUI/CLI)
-
-### ¿Es necesario que el plugin de Raycast sea en Node.js con TSX?
-**Sí, para la capa de presentación de Raycast:**
-- Raycast tiene un runtime interno basado en Node.js y React. Toda la UI de Raycast (`List`, `ActionPanel`, formularios, navegación y renderizado flotante de macOS) requiere obligatoriamente TypeScript/TSX y `@raycast/api`.
-
-**Pero la lógica y la TUI pueden ser 100% en Go:**
-- **Go para la TUI/CLI:** Arranque instantáneo (<5ms), binario nativo compilado, cero dependencias en tiempo de ejecución.
-- **Raycast para la UI de macOS:** Maneja la ventana flotante y los atajos del sistema.
-- **Single Source of Truth:** Ambos mundos leen y escriben en el mismo archivo (`~/.foltty_projects`), asegurando sincronización instantánea y sin fricción.
-
----
-
-## 📂 Estructura del Proyecto
+## 🏗️ Estructura del Monorepo
 
 ```tree
 foltty/
-├── cmd/
-│   └── foltty/             # Entrypoint CLI/TUI en Go
-│       └── main.go
-├── internal/
-│   └── project/            # Lógica de proyectos en Go (List, Add, Rm, Ghostty)
-│       └── project.go
-├── go.mod                  # Módulo de Go (github.com/odiador/foltty)
-├── bin/
-│   └── foltty.js          # Launcher JS/TSX para pnpm link
-├── src/
-│   ├── core/
-│   │   └── projects.ts    # Lógica de persistencia en TypeScript
-│   ├── cli.ts             # CLI interactivo en Node
-│   └── index.tsx          # Componente React para Raycast
-├── assets/
-│   └── icon.png           # Icono oficial (512x512)
-├── Makefile               # Automatización para Go y Raycast
-└── package.json           # Manifiesto de Raycast
+├── raycast/                 # 🟣 Extensión oficial para Raycast (React + TypeScript)
+│   ├── assets/
+│   │   └── icon.png         # Icono oficial (512x512)
+│   ├── src/
+│   │   ├── core/
+│   │   │   └── projects.ts  # Lógica de lectura/escritura de proyectos
+│   │   └── index.tsx        # Interfaz de lista y acciones en Raycast
+│   ├── package.json         # Dependencias (@raycast/api, React 19)
+│   └── tsconfig.json
+├── tui/                     # 🔵 Aplicación CLI y TUI Nativa (Go)
+│   ├── cmd/
+│   │   └── foltty/
+│   │       └── main.go      # Punto de entrada CLI/TUI
+│   ├── internal/
+│   │   └── project/
+│   │       └── project.go   # Motor de proyectos y llamada a Ghostty
+│   └── go.mod
+├── Makefile                 # 🛠️ Orquestador central para ambos entornos
+└── README.md
 ```
 
 ---
 
-## ⚡ Comandos Rápidos
+## ⚡ Estado Compartido (Single Source of Truth)
 
-### 1. Extensión de Raycast
+Ambas aplicaciones (`raycast/` y `tui/`) leen y escriben en el mismo archivo persistente:
+- **`~/.foltty_projects`** (con sincronización y compatibilidad automática hacia `~/.pman_projects`).
+
+Cualquier proyecto agregado o eliminado desde Raycast se refleja de inmediato en la terminal, y viceversa.
+
+---
+
+## 🚀 Inicio Rápido
+
+### 1. Instalar dependencias
+```bash
+make install
+```
+*(Instala los paquetes de `raycast` vía pnpm y descarga los módulos de `tui` vía Go).*
+
+### 2. Ejecutar la Extensión en Raycast
 ```bash
 make dev
+# o:
+make dev-raycast
 ```
-Inicia la extensión en modo desarrollo en Raycast con Hot Reload.
+Abre Raycast y busca **"Buscar Proyectos"** o **"Foltty"**.
 
-### 2. TUI en Go (Compilación y Ejecución Nativa)
+### 3. Ejecutar la TUI en la Terminal
 ```bash
-make tui-go
+make tui
 ```
-O para instalar el binario `foltty` compilado en tu sistema con Go:
+O compilar e instalar el binario `foltty` de Go en tu sistema (`~/go/bin`):
 ```bash
 make install-go
 ```
 
-### 3. Comandos de Terminal
+Una vez instalado en tu `PATH`, puedes usarlo desde cualquier directorio:
 ```bash
-foltty              # Abre la TUI interactiva con theming de Ghostty
-foltty add          # Registra el directorio actual en Foltty
+foltty              # Abre la TUI interactiva (con preview)
+foltty add          # Registra el directorio actual
 foltty add ~/repo   # Registra una ruta específica
-foltty list         # Lista todos los proyectos
-foltty list --json  # Salida en JSON para integraciones
-foltty rm <nombre>  # Remueve un proyecto
-foltty open <query> # Abre directamente por coincidencia de nombre
+foltty list         # Lista los proyectos registrados
+foltty list --json  # Salida en JSON para scripts
+foltty rm <nombre>  # Elimina un proyecto
+foltty open <query> # Abre en Ghostty por búsqueda
 ```
 
 ---
 
-## 🛠️ Makefile
-
-Ejecuta `make help` para ver todas las tareas disponibles:
+## 🛠️ Comandos del Makefile Central
 
 | Comando | Descripción |
 | :--- | :--- |
-| `make dev` | Inicia el modo de desarrollo de Raycast con Hot Reload |
-| `make build` | Compila la extensión de Raycast para producción (`dist/`) |
-| `make build-go` | Compila el binario nativo en Go (`bin/foltty-go`) |
-| `make install-go` | Instala el binario `foltty` compilado en `~/go/bin` |
-| `make tui-go` | Ejecuta la TUI nativa en Go |
-| `make lint` | Ejecuta las verificaciones de linter de Raycast |
-| `make fix` | Aplica correcciones automáticas de linter |
+| `make help` | Muestra el menú de ayuda con todos los comandos |
+| `make install` | Instala dependencias de Raycast (pnpm) y Go |
+| `make build` | Compila ambos proyectos (`bin/foltty` y `raycast/dist/`) |
+| `make dev` | Inicia el modo desarrollo de Raycast con Hot Reload |
+| `make tui` | Compila y ejecuta la TUI nativa en Go |
+| `make install-tui` | Instala el binario `foltty` en tu sistema (`~/go/bin`) |
+| `make list` | Lista los proyectos registrados en la terminal |
+| `make add` | Agrega la carpeta actual a la lista |
+| `make lint-raycast`| Ejecuta el linter oficial de Raycast |
+| `make clean` | Limpia los binarios y artefactos generados |

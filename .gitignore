@@ -1,7 +1,14 @@
-node_modules
-.DS_Store
-dist
+# Binaries
+bin/
+*.exe
+*.out
+
+# Node / Raycast
+node_modules/
+raycast/node_modules/
+raycast/dist/
+raycast/raycast-env.d.ts
 *.log
-raycast-env.d.ts
-bin/foltty-go
-bin/foltty-darwin-*
+
+# OS
+.DS_Store
