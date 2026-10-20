@@ -9,6 +9,7 @@ import {
   closeMainWindow,
   useNavigation,
   Form,
+  Keyboard,
 } from "@raycast/api";
 import { homedir } from "os";
 import path from "path";
@@ -159,13 +160,10 @@ export default function Command() {
                 </ActionPanel.Section>
 
                 <ActionPanel.Section title="Acciones de Archivo">
-                  <Action.ShowInFinder
-                    path={project.path}
-                    shortcut={{ modifiers: ["cmd"], key: "enter" }}
-                  />
+                  <Action.ShowInFinder path={project.path} />
                   <Action.OpenWith
                     path={project.path}
-                    shortcut={{ modifiers: ["cmd", "shift"], key: "o" }}
+                    shortcut={Keyboard.Shortcut.Common.OpenWith}
                   />
                   <Action.CopyToClipboard
                     title="Copiar Ruta"
@@ -206,7 +204,7 @@ export default function Command() {
                   <Action.Push
                     title="Agregar Proyecto"
                     icon={Icon.Plus}
-                    shortcut={{ modifiers: ["cmd"], key: "n" }}
+                    shortcut={Keyboard.Shortcut.Common.New}
                     target={
                       <AddProjectForm
                         onProjectAdded={loadData}
@@ -224,7 +222,7 @@ export default function Command() {
                   <Action
                     title="Recargar Lista"
                     icon={Icon.ArrowClockwise}
-                    shortcut={{ modifiers: ["cmd"], key: "r" }}
+                    shortcut={Keyboard.Shortcut.Common.Refresh}
                     onAction={loadData}
                   />
                 </ActionPanel.Section>

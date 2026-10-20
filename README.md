@@ -3,6 +3,24 @@
 > **`folder` + `tty` = `foltty`** ⚡  
 > El selector ultra-rápido de proyectos para **Ghostty**, diseñado como un monorepo con **Extensión Nativa de Raycast** y **TUI / CLI en Go**.
 
+[![CI](https://github.com/odiador/foltty/actions/workflows/ci.yml/badge.svg)](https://github.com/odiador/foltty/actions/workflows/ci.yml)
+
+---
+
+## ⚡ Instalación en 1 Línea (One-Liner Install)
+
+Puedes instalar la CLI en Go y preparar la extensión de Raycast con un solo comando:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/odiador/foltty/main/install.sh | bash
+```
+
+Este script:
+1. Detecta la arquitectura de tu Mac (Apple Silicon `arm64` o Intel `x86_64`).
+2. Compila e instala el binario `foltty` en `~/.local/bin/foltty`.
+3. Configura tu `$PATH` automáticamente (`.zshrc` / `.bashrc`).
+4. Compila la extensión de Raycast lista para usar.
+
 ---
 
 ## 💡 El Concepto: ¿Por qué Foltty?
@@ -29,7 +47,7 @@ foltty/
 │   │   ├── core/
 │   │   │   └── projects.ts  # Motor de persistencia y llamada a Ghostty
 │   │   └── index.tsx        # Interfaz de Raycast con ActionPanels y submenús
-│   ├── package.json         # Dependencias (@raycast/api, React 19)
+│   ├── package.json         # Dependencias (@raycast/api, React 19, ESLint 9 Flat Config)
 │   └── tsconfig.json
 │
 ├── tui/                     # 🔵 App 2: CLI y TUI Nativa (Go)
@@ -41,6 +59,11 @@ foltty/
 │   │       └── project.go   # Lógica compartida de rutas, presets y Ghostty
 │   └── go.mod
 │
+├── .github/workflows/       # 🚀 Pipelines CI/CD (GitHub Actions)
+│   ├── ci.yml               # Verificación de linter, compilación de Go y Raycast
+│   └── release.yml          # Publicación automática de binarios en GitHub Releases
+│
+├── install.sh               # 📦 Script de instalación de un solo comando
 ├── Makefile                 # 🛠️ Orquestador raíz único para ambos proyectos
 └── README.md                # Documentación central
 ```
@@ -118,7 +141,7 @@ foltty preset rm work                           # Elimina el preset
 
 ## 🛠️ Comandos del Makefile Central
 
-El proyecto utiliza un **único Makefile orquestador** en la raíz para evitar la sobrecarga de entrar y salir de carpetas:
+El proyecto utiliza un **único Makefile orquestador** en la raíz:
 
 | Comando | Acción |
 | :--- | :--- |

@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Build Go binaries
+        run: |
+          mkdir -p dist-release
+          cd tui
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o ../dist-release/foltty-darwin-arm64 ./cmd/foltty
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o ../dist-release/foltty-darwin-amd64 ./cmd/foltty
+          cd ../dist-release
+          tar -czf foltty-darwin-arm64.tar.gz foltty-darwin-arm64
+          tar -czf foltty-darwin-amd64.tar.gz foltty-darwin-amd64
+
+      - name: Build Raycast Extension
+        working-directory: raycast
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist-release/*.tar.gz
+          generate_release_notes: true
