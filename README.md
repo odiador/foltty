@@ -8,19 +8,35 @@
 
 ---
 
-## ⚡ 1-Line Quick Install
+## ⚡ Selective Installation (Interactive or 1-Line)
 
-Install the standalone Go CLI/TUI and build the Raycast extension with a single command:
+Foltty lets you install **only what you need**. You are not forced to install both components if you only use one!
 
+### 🎯 Interactive Installer (Prompts you for your choice):
 ```bash
 curl -fsSL https://raw.githubusercontent.com/odiador/foltty/main/install.sh | bash
 ```
+```text
+What would you like to install?
+  1) Both: Go CLI/TUI + Raycast Extension (Recommended)
+  2) Go CLI/TUI only (Standalone binary, zero Node.js needed)
+  3) Raycast Extension only (Visual launcher for Raycast)
+Enter choice [1-3]:
+```
 
-**What the installer does:**
-1. Detects your macOS architecture (Apple Silicon `arm64` or Intel `x86_64`).
-2. Builds and installs the optimized `foltty` binary into `~/.local/bin/foltty`.
-3. Ensures `~/.local/bin` is in your shell `$PATH` (`.zshrc` / `.bashrc`).
-4. Bundles the Raycast extension ready to link into Raycast.
+### 🚀 Direct Flags (Automated / Headless):
+- **Go CLI / TUI Only** (No Node.js or npm required):
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/odiador/foltty/main/install.sh | bash -s -- --cli
+  ```
+- **Raycast Extension Only** (No Go required):
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/odiador/foltty/main/install.sh | bash -s -- --raycast
+  ```
+- **Both Components**:
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/odiador/foltty/main/install.sh | bash -s -- --all
+  ```
 
 ---
 
@@ -118,7 +134,7 @@ Launch the interactive TUI directly:
 make tui
 ```
 
-Install `foltty` globally into your system (`~/go/bin`):
+Install `foltty` globally into your system (`~/.local/bin`):
 ```bash
 make install-tui
 ```
@@ -173,7 +189,7 @@ foltty/
 │
 ├── docs/
 │   └── EXAMPLE_PR.md        # Reference guide for issues and PR submissions
-├── install.sh               # 📦 1-line curl installer
+├── install.sh               # 📦 Selective installer (CLI, Raycast, or Both)
 ├── Makefile                 # 🛠️ Central monorepo orchestrator
 └── README.md                # Project documentation
 ```
@@ -185,6 +201,9 @@ foltty/
 | Command | Action |
 | :--- | :--- |
 | `make help` | Display available targets |
+| `make install` | Install both Go binary and Raycast extension |
+| `make install-tui` | Install only the Go `foltty` binary into `~/.local/bin` |
+| `make install-raycast` | Install and build only the Raycast extension |
 | `make build` | Build both Go binary (`bin/foltty`) and Raycast extension (`raycast/dist/`) |
 | `make dev` | Start Raycast extension development server with Hot Reload |
 | `make tui` | Build and launch the native interactive terminal UI |
