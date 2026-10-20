@@ -1,4 +1,8 @@
-# 👻 Foltty
+<p align="center">
+  <img src="assets/logo.svg" width="160" height="160" alt="Foltty Logo" />
+</p>
+
+# 📁 Foltty
 
 > **`folder` + `tty` = `foltty`** ⚡  
 > The lightning-fast project and folder launcher for macOS terminal emulators, architected as a monorepo with a **Native Raycast Extension** and a **Standalone Go TUI / CLI**.
