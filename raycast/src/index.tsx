@@ -20,11 +20,8 @@ import {
   removeProject,
   openProjectInTerminal,
   getStorageFilePath,
-  getAllPresets,
-  addCustomPreset,
   setProjectName,
   type FolttyProject,
-  type FolttyPreset,
 } from "./core/projects";
 import {
   getActiveTerminalName,
@@ -34,13 +31,11 @@ import {
 
 export default function Command() {
   const [projects, setProjects] = useState<FolttyProject[]>([]);
-  const [presets, setPresets] = useState<FolttyPreset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadData = useCallback(() => {
     setIsLoading(true);
     setProjects(getProjects());
-    setPresets(getAllPresets());
     setIsLoading(false);
   }, []);
 
@@ -63,24 +58,6 @@ export default function Command() {
         style: Toast.Style.Failure,
         title: "Error Launching Terminal",
         message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  };
-
-  const handleAddPreset = async (preset: FolttyPreset) => {
-    const res = addProject(preset.path);
-    if (res.success) {
-      loadData();
-      await showToast({
-        style: Toast.Style.Success,
-        title: "Preset Added",
-        message: `${preset.name} -> ${preset.path}`,
-      });
-    } else {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to Add",
-        message: res.message,
       });
     }
   };
@@ -114,26 +91,14 @@ export default function Command() {
         <List.EmptyView
           icon="icon.png"
           title="No Projects Registered in Foltty"
-          description="Press ⌘+N to add a project or pick a quick preset below."
+          description="Press ⌘+N to add a project from your Mac."
           actions={
             <ActionPanel>
               <Action.Push
                 title="Add Project"
                 icon={Icon.Plus}
-                target={
-                  <AddProjectForm onProjectAdded={loadData} presets={presets} />
-                }
+                target={<AddProjectForm onProjectAdded={loadData} />}
               />
-              <ActionPanel.Section title="Quick Presets">
-                {presets.slice(0, 4).map((p) => (
-                  <Action
-                    key={p.id}
-                    title={`Add ${p.name}`}
-                    icon={Icon.Star}
-                    onAction={() => handleAddPreset(p)}
-                  />
-                ))}
-              </ActionPanel.Section>
               <Action.OpenWith
                 title="Open Projects File"
                 path={storageFile}
@@ -272,33 +237,6 @@ export default function Command() {
                         />
                       }
                     />
-                    <Action.Push
-                      title="Save as Custom Preset…"
-                      icon={Icon.Bookmark}
-                      target={
-                        <SavePresetForm
-                          defaultPath={project.path}
-                          onPresetSaved={loadData}
-                        />
-                      }
-                    />
-                  </ActionPanel.Section>
-
-                  <ActionPanel.Section title="Presets">
-                    <ActionPanel.Submenu
-                      title="Add from Preset…"
-                      icon={Icon.Star}
-                      shortcut={{ modifiers: ["cmd", "shift"], key: "a" }}
-                    >
-                      {presets.map((p) => (
-                        <Action
-                          key={p.id}
-                          title={`Add ${p.name}`}
-                          icon={p.isCustom ? Icon.Bookmark : Icon.Folder}
-                          onAction={() => handleAddPreset(p)}
-                        />
-                      ))}
-                    </ActionPanel.Submenu>
                   </ActionPanel.Section>
 
                   <ActionPanel.Section title="Project Management">
@@ -306,12 +244,7 @@ export default function Command() {
                       title="Add Project"
                       icon={Icon.Plus}
                       shortcut={Keyboard.Shortcut.Common.New}
-                      target={
-                        <AddProjectForm
-                          onProjectAdded={loadData}
-                          presets={presets}
-                        />
-                      }
+                      target={<AddProjectForm onProjectAdded={loadData} />}
                     />
                     <Action
                       title="Remove from List"
@@ -336,39 +269,39 @@ export default function Command() {
   );
 }
 
-function AddProjectForm({
-  onProjectAdded,
-  presets,
-}: {
-  onProjectAdded: () => void;
-  presets: FolttyPreset[];
-}) {
+function AddProjectForm({ onProjectAdded }: { onProjectAdded: () => void }) {
   const { pop } = useNavigation();
   const [folderPath, setFolderPath] = useState<string[]>([]);
   const [customPath, setCustomPath] = useState<string>("");
   const [customName, setCustomName] = useState<string>("");
-  const [selectedPreset, setSelectedPreset] = useState<string>("");
+
+  const handleFolderChange = (paths: string[]) => {
+    setFolderPath(paths);
+    if (paths.length > 0 && paths[0]) {
+      const selected = paths[0];
+      setCustomPath(selected);
+      if (!customName || customName === path.basename(customPath)) {
+        setCustomName(path.basename(selected));
+      }
+    }
+  };
+
+  const handleCustomPathChange = (val: string) => {
+    setCustomPath(val);
+    const trimmed = val.trim();
+    if (trimmed && (!customName || customName === path.basename(customPath))) {
+      setCustomName(path.basename(trimmed));
+    }
+  };
 
   const handleSubmit = async () => {
-    let target = "";
-
-    if (selectedPreset) {
-      const match = presets.find((p) => p.id === selectedPreset);
-      if (match) target = match.path;
-    }
-
-    if (!target && folderPath.length > 0) {
-      target = folderPath[0];
-    }
-
-    if (!target && customPath.trim()) {
-      target = customPath.trim();
-    }
+    const target =
+      customPath.trim() || (folderPath.length > 0 ? folderPath[0] : "");
 
     if (!target) {
       await showToast({
         style: Toast.Style.Failure,
-        title: "Please choose a preset, pick a folder, or enter a path",
+        title: "Please choose a folder or enter a path",
       });
       return;
     }
@@ -401,25 +334,7 @@ function AddProjectForm({
         </ActionPanel>
       }
     >
-      <Form.Description text="Choose a predefined preset or pick any folder from your Mac." />
-
-      <Form.Dropdown
-        id="presetDropdown"
-        title="Use Preset"
-        value={selectedPreset}
-        onChange={setSelectedPreset}
-      >
-        <Form.Dropdown.Item value="" title="-- None (Pick Folder Below) --" />
-        {presets.map((p) => (
-          <Form.Dropdown.Item
-            key={p.id}
-            value={p.id}
-            title={`${p.name} (${p.path.replace(homedir(), "~")})`}
-          />
-        ))}
-      </Form.Dropdown>
-
-      <Form.Separator />
+      <Form.Description text="Pick any folder from your Mac or enter a path." />
 
       <Form.FilePicker
         id="folderPicker"
@@ -428,15 +343,15 @@ function AddProjectForm({
         canChooseFiles={false}
         allowMultipleSelection={false}
         value={folderPath}
-        onChange={setFolderPath}
+        onChange={handleFolderChange}
       />
 
       <Form.TextField
         id="customPath"
-        title="Or Enter Path / Preset"
-        placeholder="docs, ~, ~/Documents or /full/path"
+        title="Folder Path"
+        placeholder="/Users/.../project or ~/Documents/code"
         value={customPath}
-        onChange={setCustomPath}
+        onChange={handleCustomPathChange}
       />
 
       <Form.TextField
@@ -464,77 +379,10 @@ function RenameProjectForm({
 
   const handleSubmit = async () => {
     const res = setProjectName(project.path, displayName.trim());
-    if (res.success) {
-      await showToast({
-        style: Toast.Style.Success,
-        title: "Project Renamed",
-        message: displayName || path.basename(project.path),
-      });
-      onRenamed();
-      pop();
-    } else {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Error Renaming",
-        message: res.message,
-      });
-    }
-  };
-
-  return (
-    <Form
-      actions={
-        <ActionPanel>
-          <Action.SubmitForm
-            title="Save Display Name"
-            onSubmit={handleSubmit}
-          />
-        </ActionPanel>
-      }
-    >
-      <Form.Description
-        text={`Assign a custom friendly display name for ${project.path}`}
-      />
-      <Form.TextField
-        id="displayName"
-        title="Display Name"
-        value={displayName}
-        onChange={setDisplayName}
-      />
-    </Form>
-  );
-}
-
-function SavePresetForm({
-  defaultPath,
-  onPresetSaved,
-}: {
-  defaultPath: string;
-  onPresetSaved: () => void;
-}) {
-  const { pop } = useNavigation();
-  const [presetId, setPresetId] = useState<string>(
-    path
-      .basename(defaultPath)
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, ""),
-  );
-  const [targetPath, setTargetPath] = useState<string>(defaultPath);
-
-  const handleSubmit = async () => {
-    if (!presetId.trim() || !targetPath.trim()) {
-      await showToast({
-        style: Toast.Style.Failure,
-        title: "Please provide both an alias ID and a target path",
-      });
-      return;
-    }
-
-    const res = addCustomPreset(presetId, targetPath);
     if (!res.success) {
       await showToast({
         style: Toast.Style.Failure,
-        title: "Failed to Save Preset",
+        title: "Failed to Rename",
         message: res.message,
       });
       return;
@@ -542,11 +390,11 @@ function SavePresetForm({
 
     await showToast({
       style: Toast.Style.Success,
-      title: "Preset Saved",
-      message: `${presetId} -> ${targetPath}`,
+      title: "Project Renamed",
+      message: displayName.trim() || project.name,
     });
 
-    onPresetSaved();
+    onRenamed();
     pop();
   };
 
@@ -554,23 +402,18 @@ function SavePresetForm({
     <Form
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Save Preset" onSubmit={handleSubmit} />
+          <Action.SubmitForm title="Save Name" onSubmit={handleSubmit} />
         </ActionPanel>
       }
     >
-      <Form.Description text="Create a quick alias for this directory (e.g. 'work', 'blog', 'sandbox')." />
-      <Form.TextField
-        id="presetId"
-        title="Alias / Preset ID"
-        placeholder="e.g. work, projects, blog"
-        value={presetId}
-        onChange={setPresetId}
+      <Form.Description
+        text={`Set a friendly display name for ${project.path}`}
       />
       <Form.TextField
-        id="presetPath"
-        title="Preset Path"
-        value={targetPath}
-        onChange={setTargetPath}
+        id="displayName"
+        title="Display Name"
+        value={displayName}
+        onChange={setDisplayName}
       />
     </Form>
   );
