@@ -56,6 +56,17 @@ lint-raycast: ## Run official Raycast linter
 fix-raycast: ## Automatically fix style and linter issues in Raycast
 	cd raycast && npm run fix-lint
 
+service-status: ## Check background LaunchAgent daemon status
+	@launchctl list | grep foltty || echo "Daemon not running"
+
+service-start: ## Start background daemon so extension works without open terminal
+	@launchctl load $(HOME)/Library/LaunchAgents/com.foltty.raycast.plist 2>/dev/null || true
+	@echo "✅ Foltty Raycast background service active"
+
+service-stop: ## Stop background daemon
+	@launchctl unload $(HOME)/Library/LaunchAgents/com.foltty.raycast.plist 2>/dev/null || true
+	@echo "🛑 Foltty Raycast background service stopped"
+
 # --- Cleanup ---
 clean: ## Remove generated build artifacts (bin/ and raycast/dist)
 	rm -rf bin raycast/dist

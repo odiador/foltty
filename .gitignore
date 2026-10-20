@@ -8,6 +8,7 @@ node_modules/
 raycast/node_modules/
 raycast/dist/
 raycast/raycast-env.d.ts
+*.rayext
 *.log
 
 # OS
