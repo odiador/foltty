@@ -46,6 +46,7 @@ type model struct {
 	statusMsg      string
 	preferredTerm  terminal.TerminalID
 	terminalActive string
+	ghosttyMode    string
 	quitting       bool
 	launchTarget   string
 }
@@ -92,6 +93,7 @@ func initialModel() model {
 		renameInput:    ri,
 		preferredTerm:  prefTerm,
 		terminalActive: string(prefTerm),
+		ghosttyMode:    config.GetGhosttyMode(),
 	}
 	m.applyFilter()
 	return m
@@ -270,6 +272,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 
+			case "ctrl+t":
+				if len(m.filtered) > 0 && m.selectedIndex < len(m.filtered) {
+					target := m.filtered[m.selectedIndex]
+					m.launchTarget = target.Path
+					m.ghosttyMode = "tab"
+					m.quitting = true
+					return m, tea.Quit
+				}
+				return m, nil
+
+			case "ctrl+w":
+				if len(m.filtered) > 0 && m.selectedIndex < len(m.filtered) {
+					target := m.filtered[m.selectedIndex]
+					m.launchTarget = target.Path
+					m.ghosttyMode = "window"
+					m.quitting = true
+					return m, tea.Quit
+				}
+				return m, nil
+
 			case "ctrl+a":
 				m.mode = modeAdd
 				m.addStep = 0
@@ -388,6 +410,40 @@ func (m *model) executeVimCommand(raw string) {
 		m.preferredTerm = terminal.TerminalID(termID)
 		m.terminalActive = termID
 		m.statusMsg = fmt.Sprintf("⚡ Terminal set to %s", termID)
+
+	case "tab":
+		if len(m.filtered) > 0 && m.selectedIndex < len(m.filtered) {
+			cur := m.filtered[m.selectedIndex]
+			m.launchTarget = cur.Path
+			m.ghosttyMode = "tab"
+			m.quitting = true
+		} else {
+			m.statusMsg = "❌ No project selected"
+		}
+
+	case "win", "window":
+		if len(m.filtered) > 0 && m.selectedIndex < len(m.filtered) {
+			cur := m.filtered[m.selectedIndex]
+			m.launchTarget = cur.Path
+			m.ghosttyMode = "window"
+			m.quitting = true
+		} else {
+			m.statusMsg = "❌ No project selected"
+		}
+
+	case "mode":
+		if len(parts) < 2 {
+			m.statusMsg = fmt.Sprintf("Ghostty Mode: %s. Use :mode <tab|window>", m.ghosttyMode)
+			return
+		}
+		targetMode := strings.ToLower(parts[1])
+		if targetMode != "tab" && targetMode != "window" {
+			m.statusMsg = "❌ Mode must be 'tab' or 'window'"
+			return
+		}
+		_ = config.SetGhosttyMode(targetMode)
+		m.ghosttyMode = targetMode
+		m.statusMsg = fmt.Sprintf("⚡ Ghostty default mode set to %s", targetMode)
 
 	default:
 		m.statusMsg = fmt.Sprintf("❓ Unknown command: %s (Type :h for help)", verb)
@@ -590,6 +646,8 @@ Foltty is your Spotlight-like project launcher for macOS terminal emulators.
 NAVIGATION & ACTIONS:
   ↑ / ↓ / ^J / ^K     Navigate through project list
   Enter               Launch selected project in active terminal
+  Ctrl + T            Quick launch selected in Ghostty (New Tab)
+  Ctrl + W            Quick launch selected in Ghostty (New Window)
   Ctrl + A            Add new project or path interactively
   Ctrl + R            Rename / assign custom display name to selected project
   Ctrl + D / Ctrl + X Remove selected project from list
@@ -598,6 +656,9 @@ NAVIGATION & ACTIONS:
 
 VIM COMMANDS (:):
   :h, :help           Show this help manual
+  :tab                Open selected project in Ghostty (New Tab)
+  :win, :window       Open selected project in Ghostty (New Window)
+  :mode <tab|window>  Set Ghostty default launch mode
   :a <path> [name]    Add project path (e.g. :a ~/Dev/my-api "Backend API")
   :r <name>           Rename selected project's display name
   :d, :rm             Delete selected project
@@ -645,8 +706,8 @@ func Run() error {
 
 	finalModel := m.(model)
 	if finalModel.launchTarget != "" {
-		fmt.Printf("🚀 Launching %s in %s...\n", filepath.Base(finalModel.launchTarget), finalModel.preferredTerm)
-		return project.OpenInTerminal(finalModel.launchTarget, finalModel.preferredTerm)
+		fmt.Printf("🚀 Launching %s in %s (%s)...\n", filepath.Base(finalModel.launchTarget), finalModel.preferredTerm, finalModel.ghosttyMode)
+		return project.OpenInTerminalWithMode(finalModel.launchTarget, finalModel.preferredTerm, finalModel.ghosttyMode)
 	}
 
 	return nil

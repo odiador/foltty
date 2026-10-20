@@ -13,6 +13,7 @@
     {
       "name": "index",
       "title": "Search Projects",
+      "icon": "icon.png",
       "description": "Browse registered projects and launch them in your preferred terminal",
       "mode": "view"
     }
@@ -57,6 +58,24 @@
         {
           "title": "Apple Terminal",
           "value": "terminal"
+        }
+      ]
+    },
+    {
+      "name": "ghosttyTarget",
+      "type": "dropdown",
+      "title": "Ghostty Open Mode",
+      "description": "Choose whether Ghostty opens projects in a new tab or a new window",
+      "default": "tab",
+      "required": false,
+      "data": [
+        {
+          "title": "New Tab (default)",
+          "value": "tab"
+        },
+        {
+          "title": "New Window",
+          "value": "window"
         }
       ]
     }

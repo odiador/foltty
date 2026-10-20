@@ -53,10 +53,11 @@ export default function Command() {
   const handleOpenTerminal = async (
     projectPath: string,
     targetTerminal?: TerminalId,
+    ghosttyMode?: "tab" | "window",
   ) => {
     try {
       await closeMainWindow();
-      await openProjectInTerminal(projectPath, targetTerminal);
+      await openProjectInTerminal(projectPath, targetTerminal, ghosttyMode);
     } catch (error) {
       await showToast({
         style: Toast.Style.Failure,
@@ -111,7 +112,7 @@ export default function Command() {
     >
       {projects.length === 0 && !isLoading ? (
         <List.EmptyView
-          icon={Icon.Folder}
+          icon="icon.png"
           title="No Projects Registered in Foltty"
           description="Press ⌘+N to add a project or pick a quick preset below."
           actions={
@@ -161,7 +162,7 @@ export default function Command() {
               key={project.id}
               icon={
                 project.exists
-                  ? Icon.Folder
+                  ? "icon.png"
                   : { source: Icon.ExclamationMark, tintColor: Color.Red }
               }
               title={project.name}
@@ -175,29 +176,74 @@ export default function Command() {
                       icon={Icon.Terminal}
                       onAction={() => handleOpenTerminal(project.path)}
                     />
+                    {TERMINAL_REGISTRY.ghostty.isAvailable() && (
+                      <>
+                        <Action
+                          title="Open in Ghostty (New Tab)"
+                          icon={Icon.PlusCircle}
+                          shortcut={{ modifiers: ["cmd"], key: "return" }}
+                          onAction={() =>
+                            handleOpenTerminal(project.path, "ghostty", "tab")
+                          }
+                        />
+                        <Action
+                          title="Open in Ghostty (New Window)"
+                          icon={Icon.Window}
+                          shortcut={{
+                            modifiers: ["cmd", "shift"],
+                            key: "return",
+                          }}
+                          onAction={() =>
+                            handleOpenTerminal(
+                              project.path,
+                              "ghostty",
+                              "window",
+                            )
+                          }
+                        />
+                      </>
+                    )}
                     <ActionPanel.Submenu
                       title="Open in Specific Terminal…"
                       icon={Icon.Terminal}
                       shortcut={{ modifiers: ["cmd"], key: "t" }}
                     >
+                      <Action
+                        title="Ghostty (New Tab)"
+                        icon={Icon.PlusCircle}
+                        onAction={() =>
+                          handleOpenTerminal(project.path, "ghostty", "tab")
+                        }
+                      />
+                      <Action
+                        title="Ghostty (New Window)"
+                        icon={Icon.Window}
+                        onAction={() =>
+                          handleOpenTerminal(project.path, "ghostty", "window")
+                        }
+                      />
                       {(
                         Object.keys(
                           TERMINAL_REGISTRY,
                         ) as (keyof typeof TERMINAL_REGISTRY)[]
-                      ).map((termKey) => {
-                        const term = TERMINAL_REGISTRY[termKey];
-                        const available = term.isAvailable();
-                        return (
-                          <Action
-                            key={term.id}
-                            title={`${term.name}${available ? "" : " (Not Installed)"}`}
-                            icon={available ? Icon.Terminal : Icon.XMarkCircle}
-                            onAction={() =>
-                              handleOpenTerminal(project.path, term.id)
-                            }
-                          />
-                        );
-                      })}
+                      )
+                        .filter((termKey) => termKey !== "ghostty")
+                        .map((termKey) => {
+                          const term = TERMINAL_REGISTRY[termKey];
+                          const available = term.isAvailable();
+                          return (
+                            <Action
+                              key={term.id}
+                              title={`${term.name}${available ? "" : " (Not Installed)"}`}
+                              icon={
+                                available ? Icon.Terminal : Icon.XMarkCircle
+                              }
+                              onAction={() =>
+                                handleOpenTerminal(project.path, term.id)
+                              }
+                            />
+                          );
+                        })}
                     </ActionPanel.Submenu>
                   </ActionPanel.Section>
 

@@ -1,7 +1,12 @@
 import fs from "fs";
 import { homedir } from "os";
 import path from "path";
-import { openInTerminal, type TerminalId } from "./terminal";
+import {
+  openInTerminal,
+  launchGhostty,
+  getActiveTerminalId,
+  type TerminalId,
+} from "./terminal";
 
 export const FOLTTY_FILE = path.join(homedir(), ".foltty_projects");
 export const PMAN_FILE = path.join(homedir(), ".pman_projects");
@@ -358,6 +363,7 @@ export function removeProject(targetPath: string): {
 export async function openProjectInTerminal(
   projectPath: string,
   terminal?: TerminalId,
+  ghosttyMode?: "tab" | "window",
 ): Promise<void> {
   const resolved = resolvePresetOrPath(projectPath);
 
@@ -365,9 +371,20 @@ export async function openProjectInTerminal(
     throw new Error(`Directory does not exist on disk: ${resolved}`);
   }
 
-  await openInTerminal(resolved, terminal);
+  const selectedTerminal =
+    terminal && terminal !== "auto" ? terminal : getActiveTerminalId();
+
+  if (selectedTerminal === "ghostty") {
+    await launchGhostty(resolved, ghosttyMode);
+    return;
+  }
+
+  await openInTerminal(resolved, selectedTerminal);
 }
 
-export async function openInGhostty(projectPath: string): Promise<void> {
-  await openProjectInTerminal(projectPath, "ghostty");
+export async function openInGhostty(
+  projectPath: string,
+  mode?: "tab" | "window",
+): Promise<void> {
+  await openProjectInTerminal(projectPath, "ghostty", mode);
 }

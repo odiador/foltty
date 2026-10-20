@@ -23,6 +23,47 @@ export interface TerminalDefinition {
   launch: (projectPath: string) => Promise<void>;
 }
 
+export function getGhosttyTargetPreference(): "tab" | "window" {
+  try {
+    const prefs = getPreferenceValues<{ ghosttyTarget?: "tab" | "window" }>();
+    if (prefs.ghosttyTarget === "window") {
+      return "window";
+    }
+  } catch {
+    // fallback
+  }
+  return "tab";
+}
+
+export async function launchGhostty(
+  projectPath: string,
+  mode?: "tab" | "window",
+): Promise<void> {
+  const targetMode = mode || getGhosttyTargetPreference();
+  const script = `
+on run argv
+    set targetDir to item 1 of argv
+    set openMode to item 2 of argv
+    tell application "Ghostty"
+        activate
+        set cfg to new surface configuration
+        set initial working directory of cfg to targetDir
+        if openMode is "tab" and (count of windows) > 0 then
+            new tab in front window with configuration cfg
+        else
+            new window with configuration cfg
+        end if
+    end tell
+end run`;
+
+  try {
+    await execFileAsync("osascript", ["-e", script, projectPath, targetMode]);
+  } catch {
+    // Fallback to macOS open without -n to preserve instance
+    await execFileAsync("open", ["-a", "Ghostty", projectPath]);
+  }
+}
+
 export const TERMINAL_REGISTRY: Record<
   Exclude<TerminalId, "auto">,
   TerminalDefinition
@@ -35,12 +76,7 @@ export const TERMINAL_REGISTRY: Record<
       fs.existsSync("/Applications/Ghostty.app") ||
       fs.existsSync(`${process.env.HOME}/Applications/Ghostty.app`),
     launch: async (projectPath: string) => {
-      await execFileAsync("open", [
-        "-na",
-        "Ghostty",
-        "--args",
-        `--working-directory=${projectPath}`,
-      ]);
+      await launchGhostty(projectPath);
     },
   },
   iterm: {

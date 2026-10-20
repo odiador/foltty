@@ -63,7 +63,7 @@ Foltty is not limited to a single terminal emulator. It auto-detects and support
 
 | Terminal | Supported | Launch Method |
 | :--- | :---: | :--- |
-| **Ghostty** | ✅ | Native window with `--working-directory` |
+| **Ghostty** | ✅ | Native Tab or Window via AppleScript `surface configuration` |
 | **iTerm2** | ✅ | Direct folder launch / AppleScript tab support |
 | **WezTerm** | ✅ | `wezterm start --cwd` |
 | **Warp** | ✅ | Native directory targeting |
@@ -121,9 +121,10 @@ make dev
 1. Open Raycast (`⌥ + Space` or `⌘ + Space`).
 2. Search for **`Foltty`** or **`Search Projects`** and press `Enter`.
 3. **Key Shortcuts in Raycast:**
-   - `Enter`: Open selected project in your preferred terminal emulator.
-   - `⌘ + T`: Open submenu to choose a specific terminal (Ghostty, iTerm, WezTerm, Warp, etc.).
-   - `⌘ + Enter`: Reveal folder in Finder.
+   - `Enter`: Open selected project in your preferred terminal emulator (Ghostty uses preferred Tab/Window mode).
+   - `⌘ + Enter`: Quick launch selected project in **Ghostty (New Tab)**.
+   - `⌘ + ⇧ + Enter`: Quick launch selected project in **Ghostty (New Window)**.
+   - `⌘ + T`: Open submenu to choose a specific terminal (Ghostty Tab, Ghostty Window, iTerm, WezTerm, Warp, etc.).
    - `⌘ + ⇧ + A`: Quick Presets submenu (Home, Docs, Dev, etc.).
    - `⌘ + N`: Add new project form with preset dropdown or Finder picker.
    - `⌘ + ⌫`: Remove project from list.
@@ -144,13 +145,18 @@ foltty
 - **Instant Search:** Starts directly in search mode with live filtering.
 - **Vim Command Mode (`:`):** Type `:` to enter command mode:
   - `:h` or `:help`: Open full interactive help manual.
+  - `:tab`: Launch selected project in **Ghostty (New Tab)**.
+  - `:win` or `:window`: Launch selected project in **Ghostty (New Window)**.
+  - `:mode <tab|window>`: Configure Ghostty default launch mode (tab or window).
   - `:a <path> [name]`: Add any folder path with an optional custom display name.
   - `:r <new-name>`: Rename the selected project's display label.
   - `:d` or `:rm`: Delete selected project.
   - `:term <id>`: Switch default terminal emulator (`ghostty`, `iterm`, `wezterm`, `warp`, etc.).
   - `:q` or `:quit`: Exit Foltty.
 - **Shortcuts:**
-  - `↵ Enter`: Launch selected project in terminal.
+  - `↵ Enter`: Launch selected project in terminal (using default Ghostty mode).
+  - `Ctrl + T`: Quick launch in Ghostty (New Tab).
+  - `Ctrl + W`: Quick launch in Ghostty (New Window).
   - `Ctrl + A`: Interactive prompt to add a project and display name.
   - `Ctrl + R`: Rename selected project.
   - `Ctrl + D`: Remove selected project.

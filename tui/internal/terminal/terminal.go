@@ -68,7 +68,7 @@ func DetectDefaultTerminal() TerminalID {
 	return AppleTerminal
 }
 
-func Launch(terminalID TerminalID, projectPath string) error {
+func LaunchWithGhosttyMode(terminalID TerminalID, projectPath string, ghosttyMode string) error {
 	resolvedPath, err := filepath.Abs(projectPath)
 	if err != nil {
 		resolvedPath = projectPath
@@ -80,8 +80,30 @@ func Launch(terminalID TerminalID, projectPath string) error {
 
 	switch strings.ToLower(string(terminalID)) {
 	case "ghostty":
-		cmd := exec.Command("open", "-na", "Ghostty", "--args", fmt.Sprintf("--working-directory=%s", resolvedPath))
-		return cmd.Run()
+		if ghosttyMode == "" {
+			ghosttyMode = "tab"
+		}
+		script := `
+on run argv
+    set targetDir to item 1 of argv
+    set openMode to item 2 of argv
+    tell application "Ghostty"
+        activate
+        set cfg to new surface configuration
+        set initial working directory of cfg to targetDir
+        if openMode is "tab" and (count of windows) > 0 then
+            new tab in front window with configuration cfg
+        else
+            new window with configuration cfg
+        end if
+    end tell
+end run`
+		cmd := exec.Command("osascript", "-e", script, resolvedPath, ghosttyMode)
+		if err := cmd.Run(); err != nil {
+			// Fallback to macOS open without -n to preserve instance
+			return exec.Command("open", "-a", "Ghostty", resolvedPath).Run()
+		}
+		return nil
 
 	case "iterm", "iterm2":
 		cmd := exec.Command("open", "-a", "iTerm", resolvedPath)
@@ -111,9 +133,13 @@ func Launch(terminalID TerminalID, projectPath string) error {
 		// Fallback to auto-detected terminal
 		def := DetectDefaultTerminal()
 		if def != terminalID {
-			return Launch(def, resolvedPath)
+			return LaunchWithGhosttyMode(def, resolvedPath, ghosttyMode)
 		}
 		cmd := exec.Command("open", "-a", "Terminal", resolvedPath)
 		return cmd.Run()
 	}
+}
+
+func Launch(terminalID TerminalID, projectPath string) error {
+	return LaunchWithGhosttyMode(terminalID, projectPath, "tab")
 }

@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	DefaultTerminal string `json:"defaultTerminal"`
+	GhosttyMode     string `json:"ghosttyMode,omitempty"` // "tab" or "window"
 }
 
 func GetConfigFilePath() (string, error) {
@@ -68,5 +69,22 @@ func GetPreferredTerminal() terminal.TerminalID {
 func SetPreferredTerminal(termID string) error {
 	cfg, _ := LoadConfig()
 	cfg.DefaultTerminal = termID
+	return SaveConfig(cfg)
+}
+
+func GetGhosttyMode() string {
+	cfg, err := LoadConfig()
+	if err != nil || cfg.GhosttyMode == "" {
+		return "tab"
+	}
+	return cfg.GhosttyMode
+}
+
+func SetGhosttyMode(mode string) error {
+	cfg, _ := LoadConfig()
+	if mode != "window" {
+		mode = "tab"
+	}
+	cfg.GhosttyMode = mode
 	return SaveConfig(cfg)
 }
