@@ -116,11 +116,6 @@ export default function Command() {
               tooltip: "Folder does not exist on disk",
             });
           }
-          if (project.customName) {
-            accessories.push({
-              tag: { value: "Custom Name", color: Color.Purple },
-            });
-          }
 
           return (
             <List.Item
@@ -273,24 +268,11 @@ function AddProjectForm({ onProjectAdded }: { onProjectAdded: () => void }) {
   const { pop } = useNavigation();
   const [folderPath, setFolderPath] = useState<string[]>([]);
   const [customPath, setCustomPath] = useState<string>("");
-  const [customName, setCustomName] = useState<string>("");
 
   const handleFolderChange = (paths: string[]) => {
     setFolderPath(paths);
     if (paths.length > 0 && paths[0]) {
-      const selected = paths[0];
-      setCustomPath(selected);
-      if (!customName || customName === path.basename(customPath)) {
-        setCustomName(path.basename(selected));
-      }
-    }
-  };
-
-  const handleCustomPathChange = (val: string) => {
-    setCustomPath(val);
-    const trimmed = val.trim();
-    if (trimmed && (!customName || customName === path.basename(customPath))) {
-      setCustomName(path.basename(trimmed));
+      setCustomPath(paths[0]);
     }
   };
 
@@ -306,7 +288,7 @@ function AddProjectForm({ onProjectAdded }: { onProjectAdded: () => void }) {
       return;
     }
 
-    const res = addProject(target, customName.trim());
+    const res = addProject(target);
     if (!res.success) {
       await showToast({
         style: Toast.Style.Failure,
@@ -319,7 +301,7 @@ function AddProjectForm({ onProjectAdded }: { onProjectAdded: () => void }) {
     await showToast({
       style: Toast.Style.Success,
       title: "Project Added",
-      message: customName || path.basename(target),
+      message: path.basename(target),
     });
 
     onProjectAdded();
@@ -355,15 +337,7 @@ function AddProjectForm({ onProjectAdded }: { onProjectAdded: () => void }) {
         title="Folder Path"
         placeholder="/Users/.../project or ~/Documents/code"
         value={customPath}
-        onChange={handleCustomPathChange}
-      />
-
-      <Form.TextField
-        id="customName"
-        title="Display Name (Optional)"
-        placeholder="e.g. Backend API, Personal Blog"
-        value={customName}
-        onChange={setCustomName}
+        onChange={setCustomPath}
       />
     </Form>
   );
