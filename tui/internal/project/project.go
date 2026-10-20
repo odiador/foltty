@@ -1,6 +1,7 @@
 package project
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +14,13 @@ type Project struct {
 	Name   string `json:"name"`
 	Path   string `json:"path"`
 	Exists bool   `json:"exists"`
+}
+
+type Preset struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Path     string `json:"path"`
+	IsCustom bool   `json:"isCustom"`
 }
 
 func GetStoragePath() (string, error) {
@@ -38,6 +46,159 @@ func GetStoragePath() (string, error) {
 	}
 
 	return folttyFile, nil
+}
+
+func GetPresetsFilePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".foltty_presets.json"), nil
+}
+
+func GetDefaultPresets() []Preset {
+	home, _ := os.UserHomeDir()
+	presets := []Preset{
+		{ID: "home", Name: "Home (~)", Path: home, IsCustom: false},
+		{ID: "documents", Name: "Documents", Path: filepath.Join(home, "Documents"), IsCustom: false},
+		{ID: "downloads", Name: "Downloads", Path: filepath.Join(home, "Downloads"), IsCustom: false},
+		{ID: "desktop", Name: "Desktop", Path: filepath.Join(home, "Desktop"), IsCustom: false},
+		{ID: "config", Name: "Config (.config)", Path: filepath.Join(home, ".config"), IsCustom: false},
+	}
+
+	// Verificar carpetas de desarrollo comunes
+	devDirs := []string{"Development", "Developer", "Projects", "Code", "workspace"}
+	for _, dir := range devDirs {
+		p := filepath.Join(home, dir)
+		if stat, err := os.Stat(p); err == nil && stat.IsDir() {
+			presets = append(presets, Preset{
+				ID:       "dev",
+				Name:     fmt.Sprintf("Dev (%s)", dir),
+				Path:     p,
+				IsCustom: false,
+			})
+			break
+		}
+	}
+
+	return presets
+}
+
+func GetCustomPresets() (map[string]string, error) {
+	presetsPath, err := GetPresetsFilePath()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(presetsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return make(map[string]string), nil
+		}
+		return nil, err
+	}
+
+	var custom map[string]string
+	if err := json.Unmarshal(data, &custom); err != nil {
+		return make(map[string]string), nil
+	}
+	return custom, nil
+}
+
+func GetAllPresets() ([]Preset, error) {
+	presets := GetDefaultPresets()
+	custom, err := GetCustomPresets()
+	if err != nil {
+		return presets, nil
+	}
+
+	for id, pathStr := range custom {
+		norm, _ := NormalizePath(pathStr)
+		presets = append(presets, Preset{
+			ID:       id,
+			Name:     fmt.Sprintf("%s (Custom)", id),
+			Path:     norm,
+			IsCustom: true,
+		})
+	}
+
+	return presets, nil
+}
+
+func AddCustomPreset(name, targetPath string) error {
+	trimmedName := strings.ToLower(strings.TrimSpace(name))
+	if trimmedName == "" {
+		return errors.New("el nombre del preset no puede estar vacío")
+	}
+
+	norm, err := NormalizePath(targetPath)
+	if err != nil {
+		return err
+	}
+
+	custom, err := GetCustomPresets()
+	if err != nil {
+		custom = make(map[string]string)
+	}
+
+	custom[trimmedName] = norm
+
+	presetsPath, err := GetPresetsFilePath()
+	if err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(custom, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(presetsPath, data, 0644)
+}
+
+func RemoveCustomPreset(name string) error {
+	trimmedName := strings.ToLower(strings.TrimSpace(name))
+	custom, err := GetCustomPresets()
+	if err != nil {
+		return err
+	}
+
+	if _, ok := custom[trimmedName]; !ok {
+		return fmt.Errorf("preset custom no encontrado: %s", name)
+	}
+
+	delete(custom, trimmedName)
+
+	presetsPath, err := GetPresetsFilePath()
+	if err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(custom, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(presetsPath, data, 0644)
+}
+
+func ResolvePresetOrPath(input string) (string, error) {
+	trimmed := strings.TrimSpace(input)
+	if trimmed == "" {
+		return "", errors.New("la ruta o preset no puede estar vacío")
+	}
+
+	// 1. Verificar si coincide con algún preset (por ID o Alias)
+	lower := strings.ToLower(trimmed)
+	presets, _ := GetAllPresets()
+	for _, p := range presets {
+		if strings.ToLower(p.ID) == lower || (lower == "docs" && p.ID == "documents") || (lower == "dl" && p.ID == "downloads") {
+			return p.Path, nil
+		}
+	}
+
+	// 2. Normalizar como ruta de archivo ordinaria
+	return NormalizePath(trimmed)
 }
 
 func NormalizePath(input string) (string, error) {
@@ -113,17 +274,17 @@ func GetProjects() ([]Project, error) {
 }
 
 func AddProject(targetPath string) error {
-	normalized, err := NormalizePath(targetPath)
+	resolved, err := ResolvePresetOrPath(targetPath)
 	if err != nil {
 		return err
 	}
 
-	stat, err := os.Stat(normalized)
+	stat, err := os.Stat(resolved)
 	if err != nil {
-		return fmt.Errorf("la ruta no existe: %s", normalized)
+		return fmt.Errorf("la ruta no existe: %s", resolved)
 	}
 	if !stat.IsDir() {
-		return fmt.Errorf("la ruta no es un directorio: %s", normalized)
+		return fmt.Errorf("la ruta no es un directorio: %s", resolved)
 	}
 
 	projects, err := GetProjects()
@@ -132,8 +293,8 @@ func AddProject(targetPath string) error {
 	}
 
 	for _, p := range projects {
-		if p.Path == normalized {
-			return fmt.Errorf("el proyecto ya está registrado: %s", normalized)
+		if p.Path == resolved {
+			return fmt.Errorf("el proyecto ya está registrado: %s", resolved)
 		}
 	}
 
@@ -148,7 +309,7 @@ func AddProject(targetPath string) error {
 	}
 	defer f.Close()
 
-	if _, err := f.WriteString(normalized + "\n"); err != nil {
+	if _, err := f.WriteString(resolved + "\n"); err != nil {
 		return err
 	}
 
@@ -156,9 +317,9 @@ func AddProject(targetPath string) error {
 }
 
 func RemoveProject(targetPath string) error {
-	normalized, err := NormalizePath(targetPath)
+	resolved, err := ResolvePresetOrPath(targetPath)
 	if err != nil {
-		normalized = targetPath
+		resolved = targetPath
 	}
 
 	projects, err := GetProjects()
@@ -170,7 +331,7 @@ func RemoveProject(targetPath string) error {
 	found := false
 
 	for _, p := range projects {
-		if p.Path == normalized || p.Name == targetPath {
+		if p.Path == resolved || p.Name == targetPath || strings.EqualFold(p.Name, targetPath) {
 			found = true
 			continue
 		}
@@ -178,7 +339,7 @@ func RemoveProject(targetPath string) error {
 	}
 
 	if !found {
-		return fmt.Errorf("proyecto no encontrado: %s", targetPath)
+		return fmt.Errorf("proyecto no encontrado en la lista: %s", targetPath)
 	}
 
 	storagePath, err := GetStoragePath()
@@ -195,15 +356,15 @@ func RemoveProject(targetPath string) error {
 }
 
 func OpenInGhostty(targetPath string) error {
-	normalized, err := NormalizePath(targetPath)
+	resolved, err := ResolvePresetOrPath(targetPath)
 	if err != nil {
 		return err
 	}
 
-	if _, err := os.Stat(normalized); err != nil {
-		return fmt.Errorf("el directorio no existe: %s", normalized)
+	if _, err := os.Stat(resolved); err != nil {
+		return fmt.Errorf("el directorio no existe: %s", resolved)
 	}
 
-	cmd := exec.Command("open", "-na", "Ghostty", "--args", fmt.Sprintf("--working-directory=%s", normalized))
+	cmd := exec.Command("open", "-na", "Ghostty", "--args", fmt.Sprintf("--working-directory=%s", resolved))
 	return cmd.Run()
 }

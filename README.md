@@ -1,7 +1,58 @@
 # 👻 Foltty (Monorepo)
 
 > **El gestor de proyectos ultra-rápido para Ghostty.**  
-> Arquitectura monorepo compuesta por la **Extensión Nativa para Raycast** y la **TUI / CLI Nativa en Go**.
+> Arquitectura monorepo con **Extensión Nativa para Raycast** y **TUI / CLI Nativa en Go**, con soporte completo para **Presets y Alias Personalizados**.
+
+---
+
+## 🎯 Gestión de Rutas y Presets
+
+Foltty permite agregar o eliminar rutas rápidamente usando nombres estándar o tus propios presets personalizados.
+
+### 🌟 Presets Nativos Incluidos:
+- `~` o `home` ➔ Tu directorio personal (`$HOME`)
+- `docs` o `documents` ➔ `~/Documents`
+- `downloads` ➔ `~/Downloads`
+- `desktop` ➔ `~/Desktop`
+- `dev` ➔ Carpeta de desarrollo detectada (`~/Development`, `~/Developer` o `~/Projects`)
+- `config` ➔ `~/.config`
+
+---
+
+## ⚡ Cómo Usar Presets
+
+### 1. Desde la Terminal (CLI en Go)
+
+```bash
+# Ver todos los presets disponibles (built-in + customs)
+foltty preset
+
+# Agregar un preset directamente a tu lista activa
+foltty add docs
+foltty add ~
+foltty add dev
+
+# Crear tu propio preset personalizado (alias)
+foltty preset add work ~/Development/empresa/proyecto-principal
+foltty preset add blog ~/Sites/mi-blog
+
+# Usar tu preset personalizado
+foltty add work
+
+# Abrir directamente en Ghostty mediante un preset
+foltty open docs
+
+# Eliminar un proyecto o preset de tu lista
+foltty rm docs
+foltty preset rm work
+```
+
+### 2. Desde Raycast (Interfaz Gráfica)
+
+- **Submenú de Presets (`⌘ + ⇧ + A`):** Dentro del menú de acciones de cualquier proyecto, entra en **"Agregar desde Preset..."** y selecciona `Documentos`, `Home`, `Descargas` o tus presets custom para añadirlos en 1 clic.
+- **Formulario de Adición (`⌘ + N`):** Cuenta con un selector dropdown superior donde puedes elegir un preset o seleccionar una carpeta en Finder.
+- **Guardar como Preset Custom:** Puedes convertir cualquier proyecto de tu lista en un preset personalizado con su propio alias para reutilizarlo en la terminal y en Raycast.
+- **Vista Vacía:** Si la lista está vacía, Raycast te sugiere botones directos para agregar tus carpetas principales al instante.
 
 ---
 
@@ -9,72 +60,27 @@
 
 ```tree
 foltty/
-├── raycast/                 # 🟣 Extensión oficial para Raycast (React + TypeScript)
+├── raycast/                 # 🟣 App 1: Extensión Oficial de Raycast (React + TS)
 │   ├── assets/
 │   │   └── icon.png         # Icono oficial (512x512)
 │   ├── src/
 │   │   ├── core/
-│   │   │   └── projects.ts  # Lógica de lectura/escritura de proyectos
-│   │   └── index.tsx        # Interfaz de lista y acciones en Raycast
+│   │   │   └── projects.ts  # Soporte de proyectos y presets compartidos
+│   │   └── index.tsx        # Interfaz de Raycast con Submenús de Presets
 │   ├── package.json         # Dependencias (@raycast/api, React 19)
 │   └── tsconfig.json
-├── tui/                     # 🔵 Aplicación CLI y TUI Nativa (Go)
+│
+├── tui/                     # 🔵 App 2: CLI y TUI Nativa (Go)
 │   ├── cmd/
 │   │   └── foltty/
-│   │       └── main.go      # Punto de entrada CLI/TUI
+│   │       └── main.go      # Entrypoint de Go (CLI + Presets + TUI)
 │   ├── internal/
 │   │   └── project/
-│   │       └── project.go   # Motor de proyectos y llamada a Ghostty
+│   │       └── project.go   # Motor de rutas, presets y Ghostty
 │   └── go.mod
-├── Makefile                 # 🛠️ Orquestador central para ambos entornos
+│
+├── Makefile                 # 🛠️ Orquestador central del monorepo
 └── README.md
-```
-
----
-
-## ⚡ Estado Compartido (Single Source of Truth)
-
-Ambas aplicaciones (`raycast/` y `tui/`) leen y escriben en el mismo archivo persistente:
-- **`~/.foltty_projects`** (con sincronización y compatibilidad automática hacia `~/.pman_projects`).
-
-Cualquier proyecto agregado o eliminado desde Raycast se refleja de inmediato en la terminal, y viceversa.
-
----
-
-## 🚀 Inicio Rápido
-
-### 1. Instalar dependencias
-```bash
-make install
-```
-*(Instala los paquetes de `raycast` vía pnpm y descarga los módulos de `tui` vía Go).*
-
-### 2. Ejecutar la Extensión en Raycast
-```bash
-make dev
-# o:
-make dev-raycast
-```
-Abre Raycast y busca **"Buscar Proyectos"** o **"Foltty"**.
-
-### 3. Ejecutar la TUI en la Terminal
-```bash
-make tui
-```
-O compilar e instalar el binario `foltty` de Go en tu sistema (`~/go/bin`):
-```bash
-make install-go
-```
-
-Una vez instalado en tu `PATH`, puedes usarlo desde cualquier directorio:
-```bash
-foltty              # Abre la TUI interactiva (con preview)
-foltty add          # Registra el directorio actual
-foltty add ~/repo   # Registra una ruta específica
-foltty list         # Lista los proyectos registrados
-foltty list --json  # Salida en JSON para scripts
-foltty rm <nombre>  # Elimina un proyecto
-foltty open <query> # Abre en Ghostty por búsqueda
 ```
 
 ---
@@ -84,12 +90,11 @@ foltty open <query> # Abre en Ghostty por búsqueda
 | Comando | Descripción |
 | :--- | :--- |
 | `make help` | Muestra el menú de ayuda con todos los comandos |
-| `make install` | Instala dependencias de Raycast (pnpm) y Go |
+| `make preset` | Muestra todos los presets disponibles (Home, Docs, Dev, Customs) |
+| `make add` | Agrega el directorio actual a la lista de Foltty |
+| `make list` | Lista los proyectos registrados en la terminal |
 | `make build` | Compila ambos proyectos (`bin/foltty` y `raycast/dist/`) |
 | `make dev` | Inicia el modo desarrollo de Raycast con Hot Reload |
 | `make tui` | Compila y ejecuta la TUI nativa en Go |
-| `make install-tui` | Instala el binario `foltty` en tu sistema (`~/go/bin`) |
-| `make list` | Lista los proyectos registrados en la terminal |
-| `make add` | Agrega la carpeta actual a la lista |
-| `make lint-raycast`| Ejecuta el linter oficial de Raycast |
-| `make clean` | Limpia los binarios y artefactos generados |
+| `make install-tui` | Instala el binario `foltty` de Go en tu sistema (`~/go/bin`) |
+| `make clean` | Limpia los binarios y carpetas de build temporales |

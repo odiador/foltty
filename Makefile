@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install build dev dev-raycast build-raycast lint-raycast fix-raycast build-tui tui install-tui list add clean clean-all
+.PHONY: help install build dev dev-raycast build-raycast lint-raycast fix-raycast build-tui tui install-tui list add preset clean clean-all
 
 help: ## Muestra este menú de ayuda
 	@echo ""
@@ -31,6 +31,10 @@ list: build-tui ## Lista los proyectos registrados usando el binario de Go
 
 add: build-tui ## Agrega el directorio actual a la lista
 	./bin/foltty add
+
+preset: build-tui ## Lista los presets disponibles (Home, Docs, Dev, Customs)
+	./bin/foltty preset
+
 
 # --- Raycast Extension ---
 dev: dev-raycast ## Alias para dev-raycast
