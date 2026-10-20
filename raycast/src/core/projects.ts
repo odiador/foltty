@@ -364,6 +364,7 @@ export async function openProjectInTerminal(
   projectPath: string,
   terminal?: TerminalId,
   ghosttyMode?: "tab" | "window",
+  title?: string,
 ): Promise<void> {
   const resolved = resolvePresetOrPath(projectPath);
 
@@ -375,16 +376,17 @@ export async function openProjectInTerminal(
     terminal && terminal !== "auto" ? terminal : getActiveTerminalId();
 
   if (selectedTerminal === "ghostty") {
-    await launchGhostty(resolved, ghosttyMode);
+    await launchGhostty(resolved, ghosttyMode, title);
     return;
   }
 
-  await openInTerminal(resolved, selectedTerminal);
+  await openInTerminal(resolved, selectedTerminal, title);
 }
 
 export async function openInGhostty(
   projectPath: string,
   mode?: "tab" | "window",
+  title?: string,
 ): Promise<void> {
-  await openProjectInTerminal(projectPath, "ghostty", mode);
+  await openProjectInTerminal(projectPath, "ghostty", mode, title);
 }

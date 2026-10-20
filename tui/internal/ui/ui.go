@@ -49,6 +49,7 @@ type model struct {
 	ghosttyMode    string
 	quitting       bool
 	launchTarget   string
+	launchTitle    string
 }
 
 func initialModel() model {
@@ -267,6 +268,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.filtered) > 0 && m.selectedIndex < len(m.filtered) {
 					target := m.filtered[m.selectedIndex]
 					m.launchTarget = target.Path
+					m.launchTitle = target.Name
 					m.quitting = true
 					return m, tea.Quit
 				}
@@ -276,6 +278,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.filtered) > 0 && m.selectedIndex < len(m.filtered) {
 					target := m.filtered[m.selectedIndex]
 					m.launchTarget = target.Path
+					m.launchTitle = target.Name
 					m.ghosttyMode = "tab"
 					m.quitting = true
 					return m, tea.Quit
@@ -286,6 +289,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if len(m.filtered) > 0 && m.selectedIndex < len(m.filtered) {
 					target := m.filtered[m.selectedIndex]
 					m.launchTarget = target.Path
+					m.launchTitle = target.Name
 					m.ghosttyMode = "window"
 					m.quitting = true
 					return m, tea.Quit
@@ -415,6 +419,7 @@ func (m *model) executeVimCommand(raw string) {
 		if len(m.filtered) > 0 && m.selectedIndex < len(m.filtered) {
 			cur := m.filtered[m.selectedIndex]
 			m.launchTarget = cur.Path
+			m.launchTitle = cur.Name
 			m.ghosttyMode = "tab"
 			m.quitting = true
 		} else {
@@ -425,6 +430,7 @@ func (m *model) executeVimCommand(raw string) {
 		if len(m.filtered) > 0 && m.selectedIndex < len(m.filtered) {
 			cur := m.filtered[m.selectedIndex]
 			m.launchTarget = cur.Path
+			m.launchTitle = cur.Name
 			m.ghosttyMode = "window"
 			m.quitting = true
 		} else {
@@ -706,8 +712,12 @@ func Run() error {
 
 	finalModel := m.(model)
 	if finalModel.launchTarget != "" {
-		fmt.Printf("🚀 Launching %s in %s (%s)...\n", filepath.Base(finalModel.launchTarget), finalModel.preferredTerm, finalModel.ghosttyMode)
-		return project.OpenInTerminalWithMode(finalModel.launchTarget, finalModel.preferredTerm, finalModel.ghosttyMode)
+		title := finalModel.launchTitle
+		if title == "" {
+			title = filepath.Base(finalModel.launchTarget)
+		}
+		fmt.Printf("🚀 Launching %s in %s (%s)...\n", title, finalModel.preferredTerm, finalModel.ghosttyMode)
+		return project.OpenInTerminalWithMode(finalModel.launchTarget, finalModel.preferredTerm, finalModel.ghosttyMode, title)
 	}
 
 	return nil

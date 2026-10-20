@@ -49,10 +49,16 @@ export default function Command() {
     projectPath: string,
     targetTerminal?: TerminalId,
     ghosttyMode?: "tab" | "window",
+    title?: string,
   ) => {
     try {
       await closeMainWindow();
-      await openProjectInTerminal(projectPath, targetTerminal, ghosttyMode);
+      await openProjectInTerminal(
+        projectPath,
+        targetTerminal,
+        ghosttyMode,
+        title,
+      );
     } catch (error) {
       await showToast({
         style: Toast.Style.Failure,
@@ -134,21 +140,33 @@ export default function Command() {
                     <Action
                       title={`Open in ${activeTerminalName}`}
                       icon={Icon.Terminal}
-                      onAction={() => handleOpenTerminal(project.path)}
+                      onAction={() =>
+                        handleOpenTerminal(
+                          project.path,
+                          undefined,
+                          undefined,
+                          project.name,
+                        )
+                      }
                     />
                     {TERMINAL_REGISTRY.ghostty.isAvailable() && (
                       <>
                         <Action
-                          title="Open in Ghostty (New Tab)"
-                          icon={Icon.PlusCircle}
+                          title="Open in Ghostty (New Window)"
+                          icon={Icon.Window}
                           shortcut={{ modifiers: ["cmd"], key: "return" }}
                           onAction={() =>
-                            handleOpenTerminal(project.path, "ghostty", "tab")
+                            handleOpenTerminal(
+                              project.path,
+                              "ghostty",
+                              "window",
+                              project.name,
+                            )
                           }
                         />
                         <Action
-                          title="Open in Ghostty (New Window)"
-                          icon={Icon.Window}
+                          title="Open in Ghostty (New Tab)"
+                          icon={Icon.PlusCircle}
                           shortcut={{
                             modifiers: ["cmd", "shift"],
                             key: "return",
@@ -157,7 +175,8 @@ export default function Command() {
                             handleOpenTerminal(
                               project.path,
                               "ghostty",
-                              "window",
+                              "tab",
+                              project.name,
                             )
                           }
                         />
@@ -169,17 +188,27 @@ export default function Command() {
                       shortcut={{ modifiers: ["cmd"], key: "t" }}
                     >
                       <Action
-                        title="Ghostty (New Tab)"
-                        icon={Icon.PlusCircle}
-                        onAction={() =>
-                          handleOpenTerminal(project.path, "ghostty", "tab")
-                        }
-                      />
-                      <Action
                         title="Ghostty (New Window)"
                         icon={Icon.Window}
                         onAction={() =>
-                          handleOpenTerminal(project.path, "ghostty", "window")
+                          handleOpenTerminal(
+                            project.path,
+                            "ghostty",
+                            "window",
+                            project.name,
+                          )
+                        }
+                      />
+                      <Action
+                        title="Ghostty (New Tab)"
+                        icon={Icon.PlusCircle}
+                        onAction={() =>
+                          handleOpenTerminal(
+                            project.path,
+                            "ghostty",
+                            "tab",
+                            project.name,
+                          )
                         }
                       />
                       {(
@@ -199,7 +228,12 @@ export default function Command() {
                                 available ? Icon.Terminal : Icon.XMarkCircle
                               }
                               onAction={() =>
-                                handleOpenTerminal(project.path, term.id)
+                                handleOpenTerminal(
+                                  project.path,
+                                  term.id,
+                                  undefined,
+                                  project.name,
+                                )
                               }
                             />
                           );

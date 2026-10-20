@@ -68,7 +68,7 @@ func DetectDefaultTerminal() TerminalID {
 	return AppleTerminal
 }
 
-func LaunchWithGhosttyMode(terminalID TerminalID, projectPath string, ghosttyMode string) error {
+func LaunchWithGhosttyMode(terminalID TerminalID, projectPath string, ghosttyMode string, title string) error {
 	resolvedPath, err := filepath.Abs(projectPath)
 	if err != nil {
 		resolvedPath = projectPath
@@ -81,24 +81,35 @@ func LaunchWithGhosttyMode(terminalID TerminalID, projectPath string, ghosttyMod
 	switch strings.ToLower(string(terminalID)) {
 	case "ghostty":
 		if ghosttyMode == "" {
-			ghosttyMode = "tab"
+			ghosttyMode = "window"
 		}
 		script := `
 on run argv
     set targetDir to item 1 of argv
     set openMode to item 2 of argv
+    set targetTitle to ""
+    if (count of argv) >= 3 then
+        set targetTitle to item 3 of argv
+    end if
+
     tell application "Ghostty"
         activate
         set cfg to new surface configuration
         set initial working directory of cfg to targetDir
         if openMode is "tab" and (count of windows) > 0 then
-            new tab in front window with configuration cfg
+            set myTab to new tab in front window with configuration cfg
+            set myTerm to focused terminal of myTab
         else
-            new window with configuration cfg
+            set myWin to new window with configuration cfg
+            set myTab to selected tab of myWin
+            set myTerm to focused terminal of myTab
+        end if
+        if targetTitle is not "" then
+            perform action ("set_tab_title:" & targetTitle) on myTerm
         end if
     end tell
 end run`
-		cmd := exec.Command("osascript", "-e", script, resolvedPath, ghosttyMode)
+		cmd := exec.Command("osascript", "-e", script, resolvedPath, ghosttyMode, title)
 		if err := cmd.Run(); err != nil {
 			// Fallback to macOS open without -n to preserve instance
 			return exec.Command("open", "-a", "Ghostty", resolvedPath).Run()
@@ -133,7 +144,7 @@ end run`
 		// Fallback to auto-detected terminal
 		def := DetectDefaultTerminal()
 		if def != terminalID {
-			return LaunchWithGhosttyMode(def, resolvedPath, ghosttyMode)
+			return LaunchWithGhosttyMode(def, resolvedPath, ghosttyMode, title)
 		}
 		cmd := exec.Command("open", "-a", "Terminal", resolvedPath)
 		return cmd.Run()
@@ -141,5 +152,5 @@ end run`
 }
 
 func Launch(terminalID TerminalID, projectPath string) error {
-	return LaunchWithGhosttyMode(terminalID, projectPath, "tab")
+	return LaunchWithGhosttyMode(terminalID, projectPath, "window", filepath.Base(projectPath))
 }

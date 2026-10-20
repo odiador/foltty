@@ -75,7 +75,7 @@ func SetPreferredTerminal(termID string) error {
 func GetGhosttyMode() string {
 	cfg, err := LoadConfig()
 	if err != nil || cfg.GhosttyMode == "" {
-		return "tab"
+		return "window"
 	}
 	return cfg.GhosttyMode
 }

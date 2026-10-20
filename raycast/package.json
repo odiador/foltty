@@ -65,17 +65,17 @@
       "name": "ghosttyTarget",
       "type": "dropdown",
       "title": "Ghostty Open Mode",
-      "description": "Choose whether Ghostty opens projects in a new tab or a new window",
-      "default": "tab",
+      "description": "Choose whether Ghostty opens projects in a new window or a new tab",
+      "default": "window",
       "required": false,
       "data": [
         {
-          "title": "New Tab (default)",
-          "value": "tab"
+          "title": "New Window (default)",
+          "value": "window"
         },
         {
-          "title": "New Window",
-          "value": "window"
+          "title": "New Tab",
+          "value": "tab"
         }
       ]
     }

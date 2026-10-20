@@ -13,7 +13,7 @@ import (
 )
 
 func printHelp() {
-	fmt.Println(`
+	fmt.Print(`
 👻 Foltty (Go Core) - Multi-Terminal Project Manager
 
 USAGE:
@@ -48,7 +48,8 @@ func handleTerminalCommands(args []string) {
 		current := config.GetPreferredTerminal()
 		terminals := terminal.GetAvailableTerminals()
 
-		fmt.Println("👻 Terminal Emulators on this Mac:\n")
+		fmt.Println("👻 Terminal Emulators on this Mac:")
+		fmt.Println()
 		for _, t := range terminals {
 			availTag := "\x1b[32m[Installed]\x1b[0m"
 			if !t.Available {

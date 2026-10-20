@@ -442,15 +442,24 @@ func RemoveProject(targetPath string) error {
 	return os.WriteFile(storagePath, []byte(content), 0644)
 }
 
-func OpenInTerminalWithMode(targetPath string, termID terminal.TerminalID, ghosttyMode string) error {
+func OpenInTerminalWithMode(targetPath string, termID terminal.TerminalID, ghosttyMode string, title string) error {
 	resolved, err := ResolvePresetOrPath(targetPath)
 	if err != nil {
 		return err
 	}
 
-	return terminal.LaunchWithGhosttyMode(termID, resolved, ghosttyMode)
+	if title == "" {
+		names, _ := GetCustomNames()
+		if n, ok := names[resolved]; ok && strings.TrimSpace(n) != "" {
+			title = strings.TrimSpace(n)
+		} else {
+			title = filepath.Base(resolved)
+		}
+	}
+
+	return terminal.LaunchWithGhosttyMode(termID, resolved, ghosttyMode, title)
 }
 
 func OpenInTerminal(targetPath string, termID terminal.TerminalID) error {
-	return OpenInTerminalWithMode(targetPath, termID, "tab")
+	return OpenInTerminalWithMode(targetPath, termID, "window", "")
 }
