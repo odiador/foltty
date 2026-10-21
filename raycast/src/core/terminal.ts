@@ -61,6 +61,40 @@ on run argv
 
     tell application "Ghostty"
         activate
+
+        if openMode is "smart" or openMode is "" then
+            repeat with w in windows
+                repeat with t in tabs of w
+                    set isMatch to false
+                    set tTitle to ""
+                    try
+                        set tTitle to name of t
+                    end try
+                    set tDir to ""
+                    try
+                        set tDir to working directory of (focused terminal of t)
+                    end try
+
+                    if targetTitle is not "" and (tTitle is targetTitle or tTitle is ("🔔 " & targetTitle) or tTitle contains targetTitle) then
+                        set isMatch to true
+                    else if targetDir is not "" and (tDir is targetDir or tDir is (targetDir & "/") or tDir starts with (targetDir & "/")) then
+                        set isMatch to true
+                    end if
+
+                    if isMatch then
+                        try
+                            activate window w
+                        end try
+                        select tab t
+                        try
+                            focus (focused terminal of t)
+                        end try
+                        return
+                    end if
+                end repeat
+            end repeat
+        end if
+
         set cfg to new surface configuration
         set initial working directory of cfg to targetDir
         if openMode is "window" then
