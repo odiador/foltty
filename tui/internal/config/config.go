@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/odiador/foltty/internal/terminal"
 )
@@ -11,6 +12,7 @@ import (
 type Config struct {
 	DefaultTerminal string `json:"defaultTerminal"`
 	GhosttyMode     string `json:"ghosttyMode,omitempty"` // "tab" or "window"
+	SortBy          string `json:"sortBy,omitempty"`      // "recent", "name", "name-desc", "added"
 }
 
 func GetConfigFilePath() (string, error) {
@@ -86,5 +88,28 @@ func SetGhosttyMode(mode string) error {
 		mode = "tab"
 	}
 	cfg.GhosttyMode = mode
+	return SaveConfig(cfg)
+}
+
+func GetSortBy() string {
+	cfg, err := LoadConfig()
+	if err != nil || cfg.SortBy == "" {
+		return "recent"
+	}
+	return cfg.SortBy
+}
+
+func SetSortBy(sortBy string) error {
+	cfg, _ := LoadConfig()
+	switch strings.ToLower(strings.TrimSpace(sortBy)) {
+	case "name", "name-asc", "az":
+		cfg.SortBy = "name"
+	case "name-desc", "za":
+		cfg.SortBy = "name-desc"
+	case "added", "file":
+		cfg.SortBy = "added"
+	default:
+		cfg.SortBy = "recent"
+	}
 	return SaveConfig(cfg)
 }

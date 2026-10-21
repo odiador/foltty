@@ -12,6 +12,9 @@ export const FOLTTY_FILE = path.join(homedir(), ".foltty_projects");
 export const PMAN_FILE = path.join(homedir(), ".pman_projects");
 export const PRESETS_FILE = path.join(homedir(), ".foltty_presets.json");
 export const NAMES_FILE = path.join(homedir(), ".foltty_names.json");
+export const RECENT_FILE = path.join(homedir(), ".foltty_recent.json");
+
+export type SortOrder = "recent" | "name-asc" | "name-desc" | "added";
 
 export interface FolttyProject {
   id: string;
@@ -19,6 +22,7 @@ export interface FolttyProject {
   customName?: string;
   path: string;
   exists: boolean;
+  lastOpenedAt?: number;
 }
 
 export interface FolttyPreset {
@@ -81,6 +85,94 @@ export function setProjectName(
       success: false,
       message: `Error renaming project: ${String(err)}`,
     };
+  }
+}
+
+export function getRecentHistory(): Record<string, number> {
+  if (!fs.existsSync(RECENT_FILE)) {
+    return {};
+  }
+  try {
+    const data = fs.readFileSync(RECENT_FILE, "utf-8");
+    return JSON.parse(data);
+  } catch {
+    return {};
+  }
+}
+
+export function recordProjectOpened(targetPath: string): void {
+  try {
+    const normalized = normalizePath(targetPath);
+    const history = getRecentHistory();
+    history[normalized] = Date.now();
+    fs.writeFileSync(RECENT_FILE, JSON.stringify(history, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Error updating project recent timestamp:", err);
+  }
+}
+
+export function formatRelativeTime(timestamp?: number): string | undefined {
+  if (!timestamp || typeof timestamp !== "number") {
+    return undefined;
+  }
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  if (diffMs < 0) {
+    return "Just now";
+  }
+
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffMin < 1) {
+    return "Just now";
+  }
+  if (diffMin < 60) {
+    return `${diffMin}m ago`;
+  }
+  if (diffHour < 24) {
+    return `${diffHour}h ago`;
+  }
+  if (diffDay === 1) {
+    return "Yesterday";
+  }
+  if (diffDay < 7) {
+    return `${diffDay}d ago`;
+  }
+
+  const d = new Date(timestamp);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+export function sortProjects(
+  projects: FolttyProject[],
+  sortOrder: SortOrder = "recent",
+): FolttyProject[] {
+  const copy = [...projects];
+  switch (sortOrder) {
+    case "recent":
+      return copy.sort((a, b) => {
+        const timeA = a.lastOpenedAt || 0;
+        const timeB = b.lastOpenedAt || 0;
+        if (timeB !== timeA) {
+          return timeB - timeA;
+        }
+        return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      });
+    case "name-asc":
+      return copy.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+      );
+    case "name-desc":
+      return copy.sort((a, b) =>
+        b.name.localeCompare(a.name, undefined, { sensitivity: "base" }),
+      );
+    case "added":
+      return copy;
+    default:
+      return copy;
   }
 }
 
@@ -246,6 +338,7 @@ export function getProjects(): FolttyProject[] {
   try {
     const content = fs.readFileSync(filePath, "utf-8");
     const customNames = getCustomNames();
+    const recentHistory = getRecentHistory();
 
     const lines = content
       .split("\n")
@@ -265,12 +358,15 @@ export function getProjects(): FolttyProject[] {
         customLabel = customNames[expandedPath];
       }
 
+      const lastOpenedAt = recentHistory[expandedPath];
+
       return {
         id: expandedPath,
         name,
         customName: customLabel,
         path: expandedPath,
         exists,
+        lastOpenedAt,
       };
     });
   } catch (error) {
@@ -344,6 +440,16 @@ export function removeProject(targetPath: string): {
 
   setProjectName(resolved, ""); // clean up custom name
 
+  try {
+    const history = getRecentHistory();
+    if (history[resolved]) {
+      delete history[resolved];
+      fs.writeFileSync(RECENT_FILE, JSON.stringify(history, null, 2), "utf-8");
+    }
+  } catch {
+    // Ignore cleanup error
+  }
+
   const filePath = getStorageFilePath();
   const content =
     updated.map((p) => p.path).join("\n") + (updated.length > 0 ? "\n" : "");
@@ -371,6 +477,8 @@ export async function openProjectInTerminal(
   if (!fs.existsSync(resolved)) {
     throw new Error(`Directory does not exist on disk: ${resolved}`);
   }
+
+  recordProjectOpened(resolved);
 
   const selectedTerminal =
     terminal && terminal !== "auto" ? terminal : getActiveTerminalId();

@@ -6,16 +6,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/odiador/foltty/internal/terminal"
 )
 
 type Project struct {
-	Name       string `json:"name"`
-	CustomName string `json:"customName,omitempty"`
-	Path       string `json:"path"`
-	Exists     bool   `json:"exists"`
+	Name         string `json:"name"`
+	CustomName   string `json:"customName,omitempty"`
+	Path         string `json:"path"`
+	Exists       bool   `json:"exists"`
+	LastOpenedAt int64  `json:"lastOpenedAt,omitempty"`
 }
 
 type Preset struct {
@@ -74,6 +77,62 @@ func GetCustomNames() (map[string]string, error) {
 		return make(map[string]string), nil
 	}
 	return names, nil
+}
+
+func GetRecentFilePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".foltty_recent.json"), nil
+}
+
+func GetRecentHistory() (map[string]int64, error) {
+	filePath, err := GetRecentFilePath()
+	if err != nil {
+		return make(map[string]int64), err
+	}
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return make(map[string]int64), nil
+	}
+
+	var history map[string]int64
+	if err := json.Unmarshal(data, &history); err != nil {
+		return make(map[string]int64), nil
+	}
+	return history, nil
+}
+
+func RecordProjectOpened(targetPath string) error {
+	resolved, err := ResolvePresetOrPath(targetPath)
+	if err != nil {
+		resolved = targetPath
+	}
+
+	norm, err := NormalizePath(resolved)
+	if err == nil {
+		resolved = norm
+	}
+
+	history, _ := GetRecentHistory()
+	if history == nil {
+		history = make(map[string]int64)
+	}
+	history[resolved] = time.Now().UnixMilli()
+
+	filePath, err := GetRecentFilePath()
+	if err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(history, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filePath, data, 0644)
 }
 
 func SetProjectName(target, customName string) error {
@@ -301,6 +360,7 @@ func GetProjects() ([]Project, error) {
 	}
 
 	customNames, _ := GetCustomNames()
+	recentHistory, _ := GetRecentHistory()
 
 	lines := strings.Split(string(data), "\n")
 	seen := make(map[string]bool)
@@ -336,15 +396,90 @@ func GetProjects() ([]Project, error) {
 			customLabel = cName
 		}
 
+		var lastOpened int64
+		if ts, ok := recentHistory[expanded]; ok {
+			lastOpened = ts
+		}
+
 		projects = append(projects, Project{
-			Name:       name,
-			CustomName: customLabel,
-			Path:       expanded,
-			Exists:     exists,
+			Name:         name,
+			CustomName:   customLabel,
+			Path:         expanded,
+			Exists:       exists,
+			LastOpenedAt: lastOpened,
 		})
 	}
 
 	return projects, nil
+}
+
+func SortProjects(projects []Project, sortBy string) []Project {
+	res := make([]Project, len(projects))
+	copy(res, projects)
+
+	switch strings.ToLower(sortBy) {
+	case "recent":
+		sort.SliceStable(res, func(i, j int) bool {
+			if res[i].LastOpenedAt != res[j].LastOpenedAt {
+				return res[i].LastOpenedAt > res[j].LastOpenedAt
+			}
+			return strings.ToLower(res[i].Name) < strings.ToLower(res[j].Name)
+		})
+	case "name", "name-asc", "az":
+		sort.SliceStable(res, func(i, j int) bool {
+			return strings.ToLower(res[i].Name) < strings.ToLower(res[j].Name)
+		})
+	case "name-desc", "za":
+		sort.SliceStable(res, func(i, j int) bool {
+			return strings.ToLower(res[i].Name) > strings.ToLower(res[j].Name)
+		})
+	case "added", "file":
+		// Preserves file order
+	default:
+		// Default to recent
+		sort.SliceStable(res, func(i, j int) bool {
+			if res[i].LastOpenedAt != res[j].LastOpenedAt {
+				return res[i].LastOpenedAt > res[j].LastOpenedAt
+			}
+			return strings.ToLower(res[i].Name) < strings.ToLower(res[j].Name)
+		})
+	}
+	return res
+}
+
+func FormatRelativeTime(timestamp int64) string {
+	if timestamp <= 0 {
+		return ""
+	}
+	now := time.Now().UnixMilli()
+	diffMs := now - timestamp
+	if diffMs < 0 {
+		return "just now"
+	}
+
+	diffSec := diffMs / 1000
+	diffMin := diffSec / 60
+	diffHour := diffMin / 60
+	diffDay := diffHour / 24
+
+	if diffMin < 1 {
+		return "just now"
+	}
+	if diffMin < 60 {
+		return fmt.Sprintf("%dm ago", diffMin)
+	}
+	if diffHour < 24 {
+		return fmt.Sprintf("%dh ago", diffHour)
+	}
+	if diffDay == 1 {
+		return "yesterday"
+	}
+	if diffDay < 7 {
+		return fmt.Sprintf("%dd ago", diffDay)
+	}
+
+	t := time.UnixMilli(timestamp)
+	return t.Format("Jan 2")
 }
 
 func AddProject(targetPath string) error {
@@ -420,6 +555,15 @@ func RemoveProject(targetPath string) error {
 		if p.Path == resolved || p.Name == targetPath || p.CustomName == targetPath || strings.EqualFold(p.Name, targetPath) {
 			found = true
 			_ = SetProjectName(p.Path, "") // remove custom name
+			recentHistory, _ := GetRecentHistory()
+			if _, ok := recentHistory[p.Path]; ok {
+				delete(recentHistory, p.Path)
+				if recentPath, err := GetRecentFilePath(); err == nil {
+					if data, err := json.MarshalIndent(recentHistory, "", "  "); err == nil {
+						_ = os.WriteFile(recentPath, data, 0644)
+					}
+				}
+			}
 			continue
 		}
 		updated = append(updated, p.Path)
@@ -447,6 +591,8 @@ func OpenInTerminalWithMode(targetPath string, termID terminal.TerminalID, ghost
 	if err != nil {
 		return err
 	}
+
+	_ = RecordProjectOpened(resolved)
 
 	if title == "" {
 		names, _ := GetCustomNames()

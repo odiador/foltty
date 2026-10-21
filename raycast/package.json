@@ -78,6 +78,32 @@
           "value": "tab"
         }
       ]
+    },
+    {
+      "name": "defaultSort",
+      "type": "dropdown",
+      "title": "Default Sort Order",
+      "description": "Choose how projects are ordered by default",
+      "default": "recent",
+      "required": false,
+      "data": [
+        {
+          "title": "Recently Opened (Default)",
+          "value": "recent"
+        },
+        {
+          "title": "Name (A to Z)",
+          "value": "name-asc"
+        },
+        {
+          "title": "Name (Z to A)",
+          "value": "name-desc"
+        },
+        {
+          "title": "Recently Added (File Order)",
+          "value": "added"
+        }
+      ]
     }
   ],
   "dependencies": {

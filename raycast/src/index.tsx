@@ -10,6 +10,7 @@ import {
   useNavigation,
   Form,
   Keyboard,
+  getPreferenceValues,
 } from "@raycast/api";
 import { homedir } from "os";
 import path from "path";
@@ -21,7 +22,10 @@ import {
   openProjectInTerminal,
   getStorageFilePath,
   setProjectName,
+  sortProjects,
+  formatRelativeTime,
   type FolttyProject,
+  type SortOrder,
 } from "./core/projects";
 import {
   getActiveTerminalName,
@@ -32,6 +36,14 @@ import {
 export default function Command() {
   const [projects, setProjects] = useState<FolttyProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
+    try {
+      const prefs = getPreferenceValues<{ defaultSort?: SortOrder }>();
+      return prefs.defaultSort || "recent";
+    } catch {
+      return "recent";
+    }
+  });
 
   const loadData = useCallback(() => {
     setIsLoading(true);
@@ -59,6 +71,7 @@ export default function Command() {
         ghosttyMode,
         title,
       );
+      loadData();
     } catch (error) {
       await showToast({
         style: Toast.Style.Failure,
@@ -87,11 +100,41 @@ export default function Command() {
   };
 
   const storageFile = getStorageFilePath();
+  const sortedProjects = sortProjects(projects, sortOrder);
 
   return (
     <List
       isLoading={isLoading}
       searchBarPlaceholder="Filter projects by name or path..."
+      searchBarAccessory={
+        <List.Dropdown
+          tooltip="Sort Projects"
+          storeValue={true}
+          value={sortOrder}
+          onChange={(newValue) => setSortOrder(newValue as SortOrder)}
+        >
+          <List.Dropdown.Item
+            title="Recently Opened (Default)"
+            value="recent"
+            icon={Icon.Clock}
+          />
+          <List.Dropdown.Item
+            title="Name (A-Z)"
+            value="name-asc"
+            icon={Icon.ArrowUp}
+          />
+          <List.Dropdown.Item
+            title="Name (Z-A)"
+            value="name-desc"
+            icon={Icon.ArrowDown}
+          />
+          <List.Dropdown.Item
+            title="Recently Added (File Order)"
+            value="added"
+            icon={Icon.List}
+          />
+        </List.Dropdown>
+      }
     >
       {projects.length === 0 && !isLoading ? (
         <List.EmptyView
@@ -114,13 +157,22 @@ export default function Command() {
           }
         />
       ) : (
-        projects.map((project) => {
+        sortedProjects.map((project) => {
           const accessories: List.Item.Accessory[] = [];
           if (!project.exists) {
             accessories.push({
               tag: { value: "Missing Path", color: Color.Red },
               tooltip: "Folder does not exist on disk",
             });
+          } else if (project.lastOpenedAt) {
+            const relTime = formatRelativeTime(project.lastOpenedAt);
+            if (relTime) {
+              accessories.push({
+                text: relTime,
+                icon: Icon.Clock,
+                tooltip: `Last opened: ${new Date(project.lastOpenedAt).toLocaleString()}`,
+              });
+            }
           }
 
           return (
@@ -266,6 +318,35 @@ export default function Command() {
                         />
                       }
                     />
+                  </ActionPanel.Section>
+
+                  <ActionPanel.Section title="Sort Order">
+                    <ActionPanel.Submenu
+                      title="Sort Projects by…"
+                      icon={Icon.Switch}
+                      shortcut={Keyboard.Shortcut.Common.Duplicate}
+                    >
+                      <Action
+                        title="Recently Opened (Default)"
+                        icon={Icon.Clock}
+                        onAction={() => setSortOrder("recent")}
+                      />
+                      <Action
+                        title="Name (A-Z)"
+                        icon={Icon.ArrowUp}
+                        onAction={() => setSortOrder("name-asc")}
+                      />
+                      <Action
+                        title="Name (Z-A)"
+                        icon={Icon.ArrowDown}
+                        onAction={() => setSortOrder("name-desc")}
+                      />
+                      <Action
+                        title="Recently Added (File Order)"
+                        icon={Icon.List}
+                        onAction={() => setSortOrder("added")}
+                      />
+                    </ActionPanel.Submenu>
                   </ActionPanel.Section>
 
                   <ActionPanel.Section title="Project Management">

@@ -50,6 +50,7 @@ type model struct {
 	quitting       bool
 	launchTarget   string
 	launchTitle    string
+	sortBy         string
 }
 
 func initialModel() model {
@@ -95,6 +96,7 @@ func initialModel() model {
 		preferredTerm:  prefTerm,
 		terminalActive: string(prefTerm),
 		ghosttyMode:    config.GetGhosttyMode(),
+		sortBy:         config.GetSortBy(),
 	}
 	m.applyFilter()
 	return m
@@ -102,10 +104,10 @@ func initialModel() model {
 
 func (m *model) applyFilter() {
 	query := strings.TrimSpace(strings.ToLower(m.searchInput.Value()))
+	var res []project.Project
 	if query == "" {
-		m.filtered = m.projects
+		res = m.projects
 	} else {
-		var res []project.Project
 		for _, p := range m.projects {
 			matchName := strings.Contains(strings.ToLower(p.Name), query)
 			matchPath := strings.Contains(strings.ToLower(p.Path), query)
@@ -114,8 +116,9 @@ func (m *model) applyFilter() {
 				res = append(res, p)
 			}
 		}
-		m.filtered = res
 	}
+
+	m.filtered = project.SortProjects(res, m.sortBy)
 
 	if m.selectedIndex >= len(m.filtered) {
 		m.selectedIndex = max(0, len(m.filtered)-1)
@@ -313,6 +316,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 
+			case "ctrl+s":
+				switch m.sortBy {
+				case "recent":
+					m.sortBy = "name"
+				case "name":
+					m.sortBy = "name-desc"
+				case "name-desc":
+					m.sortBy = "added"
+				default:
+					m.sortBy = "recent"
+				}
+				_ = config.SetSortBy(m.sortBy)
+				m.statusMsg = fmt.Sprintf("✦ Sort order: %s", strings.ToUpper(m.sortBy))
+				m.applyFilter()
+				return m, nil
+
 			case "ctrl+d", "ctrl+x":
 				if len(m.filtered) > 0 && m.selectedIndex < len(m.filtered) {
 					target := m.filtered[m.selectedIndex]
@@ -451,6 +470,17 @@ func (m *model) executeVimCommand(raw string) {
 		m.ghosttyMode = targetMode
 		m.statusMsg = fmt.Sprintf("⚡ Ghostty default mode set to %s", targetMode)
 
+	case "sort", "s":
+		if len(parts) < 2 {
+			m.statusMsg = fmt.Sprintf("Sort: %s. Use :sort <recent|name|added>", m.sortBy)
+			return
+		}
+		targetSort := strings.ToLower(parts[1])
+		_ = config.SetSortBy(targetSort)
+		m.sortBy = config.GetSortBy()
+		m.statusMsg = fmt.Sprintf("✦ Sort order set to: %s", strings.ToUpper(m.sortBy))
+		m.applyFilter()
+
 	default:
 		m.statusMsg = fmt.Sprintf("❓ Unknown command: %s (Type :h for help)", verb)
 	}
@@ -581,7 +611,15 @@ func (m model) View() string {
 				displayName = fmt.Sprintf("%s 🏷️", p.CustomName)
 			}
 
-			line1 := pointer + titleStyle.Render(displayName) + missingBadge
+			timeBadge := ""
+			if p.LastOpenedAt > 0 {
+				relTime := project.FormatRelativeTime(p.LastOpenedAt)
+				if relTime != "" {
+					timeBadge = lipgloss.NewStyle().Foreground(grayColor).Render(" • " + relTime)
+				}
+			}
+
+			line1 := pointer + titleStyle.Render(displayName) + missingBadge + timeBadge
 			line2 := "     " + itemPathStyle.Render(displayPath)
 			listItems = append(listItems, line1+"\n"+line2)
 		}
@@ -592,18 +630,21 @@ func (m model) View() string {
 	// 4. Sidebar / Keybindings & Context (Right Column)
 	var sidebarItems []string
 	termBadge := badgeStyle.Render("TTY: " + strings.ToUpper(string(m.preferredTerm)))
-	sidebarItems = append(sidebarItems, termBadge+"\n")
+	sortBadge := badgeStyle.Render("SORT: " + strings.ToUpper(m.sortBy))
+	sidebarItems = append(sidebarItems, termBadge+" "+sortBadge+"\n")
 
 	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Bold(true).Foreground(cyanColor).Render("Shortcuts"))
 	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render("↵ Enter   Open Terminal"))
 	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render("^A        Add project"))
 	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render("^R        Rename project"))
+	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render("^S        Cycle Sort"))
 	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render("^D        Delete project"))
 	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":         Vim commands"))
 	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render("Esc       Quit / Back"))
 
 	sidebarItems = append(sidebarItems, "\n"+lipgloss.NewStyle().Bold(true).Foreground(pinkColor).Render("Vim Mode (:)"))
 	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":h        Open Help"))
+	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":s <mode> Set sort order"))
 	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":a <path> Add project"))
 	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":r <name> Rename project"))
 	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":term <id>Switch terminal"))
@@ -656,6 +697,7 @@ NAVIGATION & ACTIONS:
   Ctrl + W            Quick launch selected in Ghostty (New Window)
   Ctrl + A            Add new project or path interactively
   Ctrl + R            Rename / assign custom display name to selected project
+  Ctrl + S            Cycle sort order (recent, name, added)
   Ctrl + D / Ctrl + X Remove selected project from list
   :                   Enter Vim command mode
   Esc                 Back to search / Quit
@@ -665,6 +707,7 @@ VIM COMMANDS (:):
   :tab                Open selected project in Ghostty (New Tab)
   :win, :window       Open selected project in Ghostty (New Window)
   :mode <tab|window>  Set Ghostty default launch mode
+  :s, :sort <mode>    Set sort order (recent, name, added)
   :a <path> [name]    Add project path (e.g. :a ~/Dev/my-api "Backend API")
   :r <name>           Rename selected project's display name
   :d, :rm             Delete selected project

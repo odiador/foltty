@@ -23,6 +23,7 @@ USAGE:
   foltty rm <path|preset>    Remove project or preset from list
   foltty list [--json]       List all registered projects
   foltty open <query> [term] Open project in preferred or specified terminal
+  foltty sort [mode]         View or set sort order (recent, name, added)
 
 TERMINAL EMULATOR CONFIGURATION:
   foltty terminal            Show available and current default terminal
@@ -219,6 +220,9 @@ func main() {
 			os.Exit(1)
 		}
 
+		sortBy := config.GetSortBy()
+		projects = project.SortProjects(projects, sortBy)
+
 		if len(args) > 1 && args[1] == "--json" {
 			data, _ := json.MarshalIndent(projects, "", "  ")
 			fmt.Println(string(data))
@@ -230,7 +234,7 @@ func main() {
 			return
 		}
 
-		fmt.Printf("👻 Registered Projects (%d):\n\n", len(projects))
+		fmt.Printf("👻 Registered Projects (%d) [Sort: %s]:\n\n", len(projects), strings.ToUpper(sortBy))
 		for _, p := range projects {
 			mark := "📂"
 			if !p.Exists {
@@ -240,8 +244,26 @@ func main() {
 			if p.CustomName != "" {
 				name = fmt.Sprintf("%s (🏷️ %s)", p.Name, p.CustomName)
 			}
-			fmt.Printf("  %s \x1b[1m%-24s\x1b[0m -> \x1b[90m%s\x1b[0m\n", mark, name, p.Path)
+			timeStr := ""
+			if p.LastOpenedAt > 0 {
+				rel := project.FormatRelativeTime(p.LastOpenedAt)
+				if rel != "" {
+					timeStr = fmt.Sprintf(" \x1b[90m(%s)\x1b[0m", rel)
+				}
+			}
+			fmt.Printf("  %s \x1b[1m%-24s\x1b[0m%s -> \x1b[90m%s\x1b[0m\n", mark, name, timeStr, p.Path)
 		}
+
+	case "sort":
+		if len(args) < 2 {
+			fmt.Printf("✦ Current default sort: %s\nUsage: foltty sort <recent|name|added>\n", config.GetSortBy())
+			return
+		}
+		if err := config.SetSortBy(args[1]); err != nil {
+			fmt.Fprintf(os.Stderr, "❌ %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("✅ Default sort order set to: %s\n", config.GetSortBy())
 
 	case "open":
 		if len(args) < 2 {
