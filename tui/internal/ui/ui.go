@@ -58,28 +58,28 @@ func initialModel() model {
 	ti.Placeholder = "Type to search projects, paths or presets..."
 	ti.Focus()
 	ti.CharLimit = 150
-	ti.Width = 46
+	ti.Width = 62
 
 	ci := textinput.New()
 	ci.Prompt = ":"
 	ci.Placeholder = "help, add <path>, rename <name>, rm, term <id>, q"
 	ci.CharLimit = 150
-	ci.Width = 50
+	ci.Width = 62
 
 	api := textinput.New()
 	api.Placeholder = "Folder path or preset (e.g. ~/Dev/app, docs, .)"
 	api.CharLimit = 150
-	api.Width = 46
+	api.Width = 62
 
 	ani := textinput.New()
 	ani.Placeholder = "Friendly name (optional, press Enter to skip)"
 	ani.CharLimit = 50
-	ani.Width = 46
+	ani.Width = 62
 
 	ri := textinput.New()
 	ri.Placeholder = "New display name"
 	ri.CharLimit = 50
-	ri.Width = 46
+	ri.Width = 62
 
 	prefTerm := config.GetPreferredTerminal()
 	projs, _ := project.GetProjects()
@@ -164,6 +164,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchInput.Focus()
 				return m, nil
 
+			case "backspace", "delete":
+				if m.addStep == 0 && m.addPathInput.Value() == "" {
+					m.mode = modeSearch
+					m.addPathInput.Reset()
+					m.addNameInput.Reset()
+					m.searchInput.Focus()
+					return m, nil
+				}
+
 			case "enter":
 				if m.addStep == 0 {
 					if strings.TrimSpace(m.addPathInput.Value()) == "" {
@@ -208,12 +217,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.searchInput.Focus()
 				return m, nil
 
+			case "backspace", "delete":
+				if m.renameInput.Value() == "" {
+					m.mode = modeSearch
+					m.renameInput.Reset()
+					m.searchInput.Focus()
+					return m, nil
+				}
+
 			case "enter":
 				if len(m.filtered) > 0 && m.selectedIndex < len(m.filtered) {
 					cur := m.filtered[m.selectedIndex]
 					newName := m.renameInput.Value()
 					_ = project.SetProjectName(cur.Path, newName)
-					m.statusMsg = fmt.Sprintf("🏷️ Renamed to '%s'", newName)
+					m.statusMsg = fmt.Sprintf("Renamed to '%s'", newName)
 					m.projects, _ = project.GetProjects()
 					m.applyFilter()
 				}
@@ -232,6 +249,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cmdInput.Reset()
 				m.searchInput.Focus()
 				return m, nil
+
+			case "backspace", "delete":
+				if m.cmdInput.Value() == "" {
+					m.mode = modeSearch
+					m.cmdInput.Reset()
+					m.searchInput.Focus()
+					return m, nil
+				}
 
 			case "enter":
 				rawCmd := strings.TrimSpace(m.cmdInput.Value())
@@ -257,13 +282,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case "up", "ctrl+k", "ctrl+p":
 				if len(m.filtered) > 0 {
-					m.selectedIndex = (m.selectedIndex - 1 + len(m.filtered)) % len(m.filtered)
+					if m.selectedIndex > 0 {
+						m.selectedIndex--
+					}
 				}
 				return m, nil
 
 			case "down", "ctrl+j", "ctrl+n":
 				if len(m.filtered) > 0 {
-					m.selectedIndex = (m.selectedIndex + 1) % len(m.filtered)
+					if m.selectedIndex < len(m.filtered)-1 {
+						m.selectedIndex++
+					}
 				}
 				return m, nil
 
@@ -549,41 +578,51 @@ func (m model) View() string {
 		return m.renderHelpView()
 	}
 
-	// 1. Banner
-	banner := bannerStyle.Render(asciiBanner)
-	headerText := lipgloss.NewStyle().Foreground(grayColor).Render("folder + tty = foltty  •  Spotlight Project Launcher")
-	header := lipgloss.JoinVertical(lipgloss.Center, banner, headerText)
+	contentWidth := 68
 
-	// 2. Search / Command Bar
+	// 1. Sleek Compact Header (No giant ASCII banner in main view)
+	titlePart := lipgloss.NewStyle().Bold(true).Foreground(cyanColor).Render("👻 FOLTTY") + " " +
+		lipgloss.NewStyle().Foreground(grayColor).Render("• Spotlight Project Launcher")
+	termBadge := badgeStyle.Render("TTY: " + strings.ToUpper(string(m.preferredTerm)))
+	sortBadge := badgeStyle.Render("SORT: " + strings.ToUpper(m.sortBy))
+	badges := termBadge + " " + sortBadge
+
+	gapWidth := max(2, contentWidth-lipgloss.Width(titlePart)-lipgloss.Width(badges))
+	headerBar := lipgloss.JoinHorizontal(lipgloss.Center, titlePart, strings.Repeat(" ", gapWidth), badges)
+
+	// 2. Search / Command Bar (Full width)
 	var inputArea string
 	switch m.mode {
 	case modeCommand:
-		inputArea = cmdBoxStyle.Render(m.cmdInput.View())
+		inputArea = cmdBoxStyle.Width(contentWidth).Render(m.cmdInput.View())
 	case modeAdd:
 		if m.addStep == 0 {
-			inputArea = searchBoxStyle.Render("📁 Add Path: " + m.addPathInput.View())
+			inputArea = searchBoxStyle.Width(contentWidth).Render("📁 Path: " + m.addPathInput.View())
 		} else {
-			inputArea = searchBoxStyle.Render("🏷️ Display Name: " + m.addNameInput.View())
+			inputArea = searchBoxStyle.Width(contentWidth).Render("Display Name: " + m.addNameInput.View())
 		}
 	case modeRename:
-		inputArea = searchBoxStyle.Render("✏️ Rename: " + m.renameInput.View())
+		inputArea = searchBoxStyle.Width(contentWidth).Render("Rename: " + m.renameInput.View())
 	default:
-		inputArea = searchBoxStyle.Render("🔍 " + m.searchInput.View())
+		inputArea = searchBoxStyle.Width(contentWidth).Render("🔍 " + m.searchInput.View())
 	}
 
-	// 3. Projects List (Left Column)
+	// 3. Projects List with Midpoint Centered Window Scrolling
 	var listItems []string
 	homeDir, _ := os.UserHomeDir()
 
-	if len(m.filtered) == 0 {
-		listItems = append(listItems, lipgloss.NewStyle().Foreground(grayColor).Italic(true).Render("\n  No matching projects found.\n  Press Ctrl+A or type :a <path> to add one!"))
+	visibleCount := 7
+	total := len(m.filtered)
+
+	if total == 0 {
+		listItems = append(listItems, lipgloss.NewStyle().Foreground(grayColor).Italic(true).Render("\n  No matching projects found.\n  Press Ctrl+A or type :a <path> to add one!\n"))
 	} else {
-		maxVisible := 8
 		start := 0
-		if m.selectedIndex >= maxVisible {
-			start = m.selectedIndex - maxVisible + 1
+		if total > visibleCount {
+			mid := visibleCount / 2 // 3 -> cursor stays centered around the 4th item (middle)
+			start = max(0, min(m.selectedIndex-mid, total-visibleCount))
 		}
-		end := min(len(m.filtered), start+maxVisible)
+		end := min(total, start+visibleCount)
 
 		for i := start; i < end; i++ {
 			p := m.filtered[i]
@@ -607,9 +646,6 @@ func (m model) View() string {
 			}
 
 			displayName := p.Name
-			if p.CustomName != "" {
-				displayName = fmt.Sprintf("%s 🏷️", p.CustomName)
-			}
 
 			timeBadge := ""
 			if p.LastOpenedAt > 0 {
@@ -624,54 +660,56 @@ func (m model) View() string {
 			listItems = append(listItems, line1+"\n"+line2)
 		}
 	}
-	leftColumn := lipgloss.JoinVertical(lipgloss.Left, listItems...)
-	leftBox := lipgloss.NewStyle().Width(52).Render(leftColumn)
+	listBox := lipgloss.NewStyle().Width(contentWidth).Render(lipgloss.JoinVertical(lipgloss.Left, listItems...))
 
-	// 4. Sidebar / Keybindings & Context (Right Column)
-	var sidebarItems []string
-	termBadge := badgeStyle.Render("TTY: " + strings.ToUpper(string(m.preferredTerm)))
-	sortBadge := badgeStyle.Render("SORT: " + strings.ToUpper(m.sortBy))
-	sidebarItems = append(sidebarItems, termBadge+" "+sortBadge+"\n")
+	// 4. Compact Horizontal Controls Bar
+	keyStyle := lipgloss.NewStyle().Foreground(cyanColor).Bold(true)
+	descStyle := lipgloss.NewStyle().Foreground(grayColor)
+	bullet := lipgloss.NewStyle().Foreground(subtleColor).Render(" • ")
 
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Bold(true).Foreground(cyanColor).Render("Shortcuts"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render("↵ Enter   Open Terminal"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render("^A        Add project"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render("^R        Rename project"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render("^S        Cycle Sort"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render("^D        Delete project"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":         Vim commands"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render("Esc       Quit / Back"))
+	controlsBar := lipgloss.JoinHorizontal(lipgloss.Center,
+		keyStyle.Render("↵ ") + descStyle.Render("open"),
+		bullet,
+		keyStyle.Render("^w ") + descStyle.Render("win"),
+		bullet,
+		keyStyle.Render("^t ") + descStyle.Render("tab"),
+		bullet,
+		keyStyle.Render("^a ") + descStyle.Render("add"),
+		bullet,
+		keyStyle.Render("^r ") + descStyle.Render("rename"),
+		bullet,
+		keyStyle.Render("^s ") + descStyle.Render("sort"),
+		bullet,
+		keyStyle.Render(": ") + descStyle.Render("vim"),
+		bullet,
+		keyStyle.Render("esc ") + descStyle.Render("quit"),
+	)
 
-	sidebarItems = append(sidebarItems, "\n"+lipgloss.NewStyle().Bold(true).Foreground(pinkColor).Render("Vim Mode (:)"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":h        Open Help"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":s <mode> Set sort order"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":a <path> Add project"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":r <name> Rename project"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":term <id>Switch terminal"))
-	sidebarItems = append(sidebarItems, lipgloss.NewStyle().Foreground(grayColor).Render(":q        Quit"))
-
-	rightBox := sidebarStyle.Width(30).Render(lipgloss.JoinVertical(lipgloss.Left, sidebarItems...))
-
-	// 5. Main Body Grid (Left List + Right Sidebar)
-	body := lipgloss.JoinHorizontal(lipgloss.Top, leftBox, rightBox)
-
-	// 6. Footer Status
-	footer := ""
+	// 5. Status / Info Footer
+	var statusLine string
 	if m.statusMsg != "" {
-		footer = statusStyle.Render(m.statusMsg)
+		statusLine = statusStyle.Render(m.statusMsg)
 	} else {
-		footer = lipgloss.NewStyle().Foreground(subtleColor).Render(fmt.Sprintf("%d projects registered  •  Press ':' for vim commands", len(m.projects)))
+		if total == 0 {
+			statusLine = lipgloss.NewStyle().Foreground(grayColor).Render("0 projects  •  Type :h for help")
+		} else {
+			statusLine = lipgloss.NewStyle().Foreground(grayColor).Render(fmt.Sprintf("%d/%d projects  •  Type :h for help", m.selectedIndex+1, total))
+		}
 	}
 
-	// 7. Combine Card Layout
-	content := lipgloss.JoinVertical(lipgloss.Center,
-		header,
+	divider := lipgloss.NewStyle().Foreground(subtleColor).Render(strings.Repeat("─", contentWidth))
+
+	// 6. Combine Layout
+	content := lipgloss.JoinVertical(lipgloss.Left,
+		headerBar,
 		"\n",
 		inputArea,
 		"\n",
-		body,
+		listBox,
 		"\n",
-		footer,
+		divider,
+		controlsBar,
+		statusLine,
 	)
 
 	card := cardStyle.Render(content)

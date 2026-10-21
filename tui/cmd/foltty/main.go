@@ -200,7 +200,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "❌ %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("🏷️ Renamed '%s' to '%s'\n", target, newName)
+		fmt.Printf("✏️ Renamed '%s' to '%s'\n", target, newName)
 
 	case "rm", "remove", "delete":
 		if len(args) < 2 {
@@ -242,7 +242,7 @@ func main() {
 			}
 			name := p.Name
 			if p.CustomName != "" {
-				name = fmt.Sprintf("%s (🏷️ %s)", p.Name, p.CustomName)
+				name = fmt.Sprintf("%s (%s)", p.Name, p.CustomName)
 			}
 			timeStr := ""
 			if p.LastOpenedAt > 0 {
