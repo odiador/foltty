@@ -11,6 +11,8 @@ import {
   Form,
   Keyboard,
   getPreferenceValues,
+  confirmAlert,
+  Alert,
 } from "@raycast/api";
 import { homedir } from "os";
 import path from "path";
@@ -82,6 +84,20 @@ export default function Command() {
   };
 
   const handleDelete = async (project: FolttyProject) => {
+    const confirmed = await confirmAlert({
+      title: `Remove "${project.name}" from Foltty?`,
+      message:
+        "This will unregister the project from your Foltty list. No files on disk will be deleted.",
+      primaryAction: {
+        title: "Remove",
+        style: Alert.ActionStyle.Destructive,
+      },
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     const res = removeProject(project.path);
     if (res.success) {
       loadData();
@@ -360,7 +376,7 @@ export default function Command() {
                       title="Remove from List"
                       icon={Icon.Trash}
                       style={Action.Style.Destructive}
-                      shortcut={{ modifiers: ["cmd"], key: "backspace" }}
+                      shortcut={Keyboard.Shortcut.Common.Remove}
                       onAction={() => handleDelete(project)}
                     />
                     <Action

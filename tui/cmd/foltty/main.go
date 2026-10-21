@@ -241,9 +241,6 @@ func main() {
 				mark = "⚠️ "
 			}
 			name := p.Name
-			if p.CustomName != "" {
-				name = fmt.Sprintf("%s (%s)", p.Name, p.CustomName)
-			}
 			timeStr := ""
 			if p.LastOpenedAt > 0 {
 				rel := project.FormatRelativeTime(p.LastOpenedAt)

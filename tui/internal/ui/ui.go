@@ -436,7 +436,7 @@ func (m *model) executeVimCommand(raw string) {
 		newName := strings.Join(parts[1:], " ")
 		cur := m.filtered[m.selectedIndex]
 		_ = project.SetProjectName(cur.Path, newName)
-		m.statusMsg = fmt.Sprintf("🏷️ Renamed to '%s'", newName)
+		m.statusMsg = fmt.Sprintf("✓ Renamed to '%s'", newName)
 		m.projects, _ = project.GetProjects()
 		m.applyFilter()
 
