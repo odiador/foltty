@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/odiador/foltty/internal/config"
 	"github.com/odiador/foltty/internal/terminal"
 )
 
@@ -607,5 +608,5 @@ func OpenInTerminalWithMode(targetPath string, termID terminal.TerminalID, ghost
 }
 
 func OpenInTerminal(targetPath string, termID terminal.TerminalID) error {
-	return OpenInTerminalWithMode(targetPath, termID, "window", "")
+	return OpenInTerminalWithMode(targetPath, termID, config.GetGhosttyMode(), "")
 }

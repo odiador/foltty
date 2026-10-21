@@ -301,6 +301,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					target := m.filtered[m.selectedIndex]
 					m.launchTarget = target.Path
 					m.launchTitle = target.Name
+					m.ghosttyMode = "smart"
+					m.quitting = true
+					return m, tea.Quit
+				}
+				return m, nil
+
+			case "shift+enter":
+				if len(m.filtered) > 0 && m.selectedIndex < len(m.filtered) {
+					target := m.filtered[m.selectedIndex]
+					m.launchTarget = target.Path
+					m.launchTitle = target.Name
+					m.ghosttyMode = "window"
 					m.quitting = true
 					return m, tea.Quit
 				}
@@ -485,14 +497,14 @@ func (m *model) executeVimCommand(raw string) {
 			m.statusMsg = "❌ No project selected"
 		}
 
-	case "mode":
+	case "mode", "m":
 		if len(parts) < 2 {
-			m.statusMsg = fmt.Sprintf("Ghostty Mode: %s. Use :mode <tab|window>", m.ghosttyMode)
+			m.statusMsg = fmt.Sprintf("Ghostty Mode: %s. Use :mode <smart|window|tab>", m.ghosttyMode)
 			return
 		}
 		targetMode := strings.ToLower(parts[1])
-		if targetMode != "tab" && targetMode != "window" {
-			m.statusMsg = "❌ Mode must be 'tab' or 'window'"
+		if targetMode != "smart" && targetMode != "window" && targetMode != "tab" {
+			m.statusMsg = "❌ Mode must be 'smart', 'window' or 'tab'"
 			return
 		}
 		_ = config.SetGhosttyMode(targetMode)
@@ -670,7 +682,7 @@ func (m model) View() string {
 	controlsBar := lipgloss.JoinHorizontal(lipgloss.Center,
 		keyStyle.Render("↵ ") + descStyle.Render("open"),
 		bullet,
-		keyStyle.Render("^w ") + descStyle.Render("win"),
+		keyStyle.Render("⇧↵/^w ") + descStyle.Render("win"),
 		bullet,
 		keyStyle.Render("^t ") + descStyle.Render("tab"),
 		bullet,
@@ -730,9 +742,9 @@ Foltty is your Spotlight-like project launcher for macOS terminal emulators.
 
 NAVIGATION & ACTIONS:
   ↑ / ↓ / ^J / ^K     Navigate through project list
-  Enter               Launch selected project in active terminal
-  Ctrl + T            Quick launch selected in Ghostty (New Tab)
-  Ctrl + W            Quick launch selected in Ghostty (New Window)
+  Enter               Launch selected project (Smart: window if none, tab if open)
+  Shift+Enter / ^W    Force launch in Ghostty (New Window)
+  Ctrl + T            Force launch in Ghostty (New Tab)
   Ctrl + A            Add new project or path interactively
   Ctrl + R            Rename / assign custom display name to selected project
   Ctrl + S            Cycle sort order (recent, name, added)
@@ -744,7 +756,7 @@ VIM COMMANDS (:):
   :h, :help           Show this help manual
   :tab                Open selected project in Ghostty (New Tab)
   :win, :window       Open selected project in Ghostty (New Window)
-  :mode <tab|window>  Set Ghostty default launch mode
+  :mode <smart|win|tab> Set Ghostty launch mode (smart = window first, then tabs)
   :s, :sort <mode>    Set sort order (recent, name, added)
   :a <path> [name]    Add project path (e.g. :a ~/Dev/my-api "Backend API")
   :r <name>           Rename selected project's display name

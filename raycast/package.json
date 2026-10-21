@@ -65,16 +65,20 @@
       "name": "ghosttyTarget",
       "type": "dropdown",
       "title": "Ghostty Open Mode",
-      "description": "Choose whether Ghostty opens projects in a new window or a new tab",
-      "default": "window",
+      "description": "Choose whether Ghostty opens projects in smart mode (window first, then tabs), new window, or new tab",
+      "default": "smart",
       "required": false,
       "data": [
         {
-          "title": "New Window (default)",
+          "title": "Smart: First Window, then Tabs (Default)",
+          "value": "smart"
+        },
+        {
+          "title": "Always New Window",
           "value": "window"
         },
         {
-          "title": "New Tab",
+          "title": "Always New Tab",
           "value": "tab"
         }
       ]

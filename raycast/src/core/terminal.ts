@@ -23,24 +23,29 @@ export interface TerminalDefinition {
   launch: (projectPath: string, title?: string) => Promise<void>;
 }
 
-export function getGhosttyTargetPreference(): "tab" | "window" {
+export type GhosttyMode = "smart" | "window" | "tab";
+
+export function getGhosttyTargetPreference(): GhosttyMode {
   try {
-    const prefs = getPreferenceValues<{ ghosttyTarget?: "tab" | "window" }>();
+    const prefs = getPreferenceValues<{ ghosttyTarget?: GhosttyMode }>();
+    if (prefs.ghosttyTarget === "window") {
+      return "window";
+    }
     if (prefs.ghosttyTarget === "tab") {
       return "tab";
     }
-    if (prefs.ghosttyTarget === "window") {
-      return "window";
+    if (prefs.ghosttyTarget === "smart") {
+      return "smart";
     }
   } catch {
     // fallback
   }
-  return "window";
+  return "smart";
 }
 
 export async function launchGhostty(
   projectPath: string,
-  mode?: "tab" | "window",
+  mode?: GhosttyMode,
   title?: string,
 ): Promise<void> {
   const targetMode = mode || getGhosttyTargetPreference();
@@ -58,7 +63,11 @@ on run argv
         activate
         set cfg to new surface configuration
         set initial working directory of cfg to targetDir
-        if openMode is "tab" and (count of windows) > 0 then
+        if openMode is "window" then
+            set myWin to new window with configuration cfg
+            set myTab to selected tab of myWin
+            set myTerm to focused terminal of myTab
+        else if (count of windows) > 0 then
             set myTab to new tab in front window with configuration cfg
             set myTerm to focused terminal of myTab
         else

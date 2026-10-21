@@ -6,6 +6,7 @@ import {
   launchGhostty,
   getActiveTerminalId,
   type TerminalId,
+  type GhosttyMode,
 } from "./terminal";
 
 export const FOLTTY_FILE = path.join(homedir(), ".foltty_projects");
@@ -469,7 +470,7 @@ export function removeProject(targetPath: string): {
 export async function openProjectInTerminal(
   projectPath: string,
   terminal?: TerminalId,
-  ghosttyMode?: "tab" | "window",
+  ghosttyMode?: GhosttyMode,
   title?: string,
 ): Promise<void> {
   const resolved = resolvePresetOrPath(projectPath);
@@ -493,7 +494,7 @@ export async function openProjectInTerminal(
 
 export async function openInGhostty(
   projectPath: string,
-  mode?: "tab" | "window",
+  mode?: GhosttyMode,
   title?: string,
 ): Promise<void> {
   await openProjectInTerminal(projectPath, "ghostty", mode, title);

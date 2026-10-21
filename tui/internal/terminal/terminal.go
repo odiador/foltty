@@ -81,7 +81,7 @@ func LaunchWithGhosttyMode(terminalID TerminalID, projectPath string, ghosttyMod
 	switch strings.ToLower(string(terminalID)) {
 	case "ghostty":
 		if ghosttyMode == "" {
-			ghosttyMode = "window"
+			ghosttyMode = "smart"
 		}
 		script := `
 on run argv
@@ -96,7 +96,11 @@ on run argv
         activate
         set cfg to new surface configuration
         set initial working directory of cfg to targetDir
-        if openMode is "tab" and (count of windows) > 0 then
+        if openMode is "window" then
+            set myWin to new window with configuration cfg
+            set myTab to selected tab of myWin
+            set myTerm to focused terminal of myTab
+        else if (count of windows) > 0 then
             set myTab to new tab in front window with configuration cfg
             set myTerm to focused terminal of myTab
         else

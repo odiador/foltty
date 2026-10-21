@@ -33,6 +33,7 @@ import {
   getActiveTerminalName,
   TERMINAL_REGISTRY,
   type TerminalId,
+  type GhosttyMode,
 } from "./core/terminal";
 
 export default function Command() {
@@ -62,7 +63,7 @@ export default function Command() {
   const handleOpenTerminal = async (
     projectPath: string,
     targetTerminal?: TerminalId,
-    ghosttyMode?: "tab" | "window",
+    ghosttyMode?: GhosttyMode,
     title?: string,
   ) => {
     try {
@@ -222,7 +223,7 @@ export default function Command() {
                         <Action
                           title="Open in Ghostty (New Window)"
                           icon={Icon.Window}
-                          shortcut={{ modifiers: ["cmd"], key: "return" }}
+                          shortcut={{ modifiers: ["shift"], key: "return" }}
                           onAction={() =>
                             handleOpenTerminal(
                               project.path,
@@ -255,6 +256,18 @@ export default function Command() {
                       icon={Icon.Terminal}
                       shortcut={{ modifiers: ["cmd"], key: "t" }}
                     >
+                      <Action
+                        title="Ghostty (Smart: Window/Tab)"
+                        icon={Icon.Terminal}
+                        onAction={() =>
+                          handleOpenTerminal(
+                            project.path,
+                            "ghostty",
+                            "smart",
+                            project.name,
+                          )
+                        }
+                      />
                       <Action
                         title="Ghostty (New Window)"
                         icon={Icon.Window}

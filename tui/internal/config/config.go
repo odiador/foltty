@@ -77,15 +77,16 @@ func SetPreferredTerminal(termID string) error {
 func GetGhosttyMode() string {
 	cfg, err := LoadConfig()
 	if err != nil || cfg.GhosttyMode == "" {
-		return "window"
+		return "smart"
 	}
 	return cfg.GhosttyMode
 }
 
 func SetGhosttyMode(mode string) error {
 	cfg, _ := LoadConfig()
-	if mode != "window" {
-		mode = "tab"
+	mode = strings.ToLower(strings.TrimSpace(mode))
+	if mode != "window" && mode != "tab" {
+		mode = "smart"
 	}
 	cfg.GhosttyMode = mode
 	return SaveConfig(cfg)
