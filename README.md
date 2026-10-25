@@ -1,14 +1,18 @@
 <p align="center">
-  <img src="assets/logo.svg" width="160" height="160" alt="Foltty Logo" />
+  <img src="assets/logo.png" width="180" height="180" alt="Foltty Logo" />
 </p>
 
-# 📁 Foltty
+<h1 align="center">Foltty</h1>
 
-> **`folder` + `tty` = `foltty`** ⚡  
-> The lightning-fast project and folder launcher for macOS terminal emulators, architected as a monorepo with a **Native Raycast Extension** and a **Standalone Go TUI / CLI**.
+<p align="center">
+  <strong><code>folder</code> + <code>tty</code> = <code>foltty</code> ⚡</strong><br>
+  The lightning-fast project and folder launcher for macOS terminal emulators, architected as a monorepo with a <strong>Native Raycast Extension</strong> and a <strong>Standalone Go TUI / CLI</strong>.
+</p>
 
-[![CI](https://github.com/odiador/foltty/actions/workflows/ci.yml/badge.svg)](https://github.com/odiador/foltty/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
+<p align="center">
+  <a href="https://github.com/odiador/foltty/actions/workflows/ci.yml"><img src="https://github.com/odiador/foltty/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-purple.svg" alt="License: MIT"></a>
+</p>
 
 ---
 
